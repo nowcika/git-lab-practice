@@ -6,12 +6,14 @@
   "scripts": {
     "serve": "node bin/static-server.js 4173",
     "test": "npm run test:local && node bin/run-tests.js",
-    "test:local": "node --test tests/local-grader.test.cjs tests/review-regressions.test.cjs",
+    "test:local": "node --test tests/local-grader.test.cjs tests/review-regressions.test.cjs tests/leaderboard.test.cjs",
     "test:scenario": "node bin/run-tests.js --project=api",
     "test:ui": "node bin/run-tests.js --project=chromium",
     "test:ui:headed": "node bin/run-tests.js --project=chromium --headed",
     "report": "node bin/run-tests.js show-report",
-    "grade:local": "node bin/grade-local.js"
+    "grade:local": "node bin/grade-local.js",
+    "test:leaderboard": "node bin/run-tests.js tests/leaderboard-ui.spec.js --project=chromium",
+    "leaderboard:smoke": "node bin/leaderboard-grade.js"
   },
   "repository": {
     "type": "git",

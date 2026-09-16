@@ -45,3 +45,7 @@ npm run test:local
 ```
 
 설치 조건, 오프라인 검사, JSON 결과와 판정 한계는 [LOCAL-GRADER.md](LOCAL-GRADER.md)를 참고하세요.
+
+## 공개 순위표
+
+페이지 하단 **공개 순위표**에서 GitHub 로그인 후 본인 공개 저장소를 제출할 수 있습니다. GitHub Actions가 서버에서 다시 채점하고, 사용자별 최고 점수와 공동 순위를 표시합니다. 초급은 설치 출력 항목을 제외한 90점, 실전은 325점입니다. 개인정보 공개 범위와 운영 방법은 [LEADERBOARD.md](LEADERBOARD.md)를 확인하세요.

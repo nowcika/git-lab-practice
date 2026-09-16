@@ -33,6 +33,6 @@ module.exports = defineConfig({
     // 실제 GitHub 데이터와 배포 사이트를 검사합니다(브라우저 없이 API만 사용).
     { name: 'api', testMatch: '**/scenario-api.spec.js', use: {} },
     // 로컬 소스를 브라우저로 검사합니다.
-    { name: 'chromium', testMatch: ['**/basic-ui.spec.js', '**/scenario-ui.spec.js'], use: { browserName: 'chromium', baseURL } },
+    { name: 'chromium', testMatch: ['**/basic-ui.spec.js', '**/scenario-ui.spec.js', '**/leaderboard-ui.spec.js'], use: { browserName: 'chromium', baseURL } },
   ],
 });

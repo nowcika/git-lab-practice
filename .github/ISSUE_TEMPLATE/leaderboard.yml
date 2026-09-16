@@ -1,0 +1,22 @@
+name: 공개 순위표 제출
+description: 본인 소유 공개 저장소를 재채점해 최고 점수를 등록합니다.
+title: '[Leaderboard] 점수 등록'
+body:
+  - type: markdown
+    attributes:
+      value: 'GitHub 사용자 이름·저장소·점수·제출 시각이 공개됩니다. 브라우저 점수와 개인 토큰은 제출하지 마세요. Actions에서 재검사하며 몇 분 뒤 순위표에 반영됩니다. 초급 90점(설치 출력 제외), 실전 325점입니다.'
+  - type: input
+    id: course
+    attributes:
+      label: Course
+      description: "basic은 초급, scenarios는 실전입니다. 웹페이지에서 선택한 값이 채워집니다."
+      placeholder: basic
+    validations:
+      required: true
+  - type: input
+    id: repository
+    attributes:
+      label: Repository
+      placeholder: https://github.com/내계정/내저장소
+    validations:
+      required: true
