@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const Core = require('../leaderboard-core');
+test.beforeEach(async ({ page }) => { await page.route('https://api.github.com/repos/nowcika/git-lab-practice/contents/data/leaderboard.json*', route => route.abort()); });
 const raw = 'https://raw.githubusercontent.com/nowcika/git-lab-practice/leaderboard-data/data/leaderboard.json*';
 const entry = (userId, login, score, extra = {}) => ({ rulesVersion: Core.RULES_VERSION, userId, login, course: 'basic', repository: `${login}/lab`, score, maxScore: 90, passed: score === 90 ? 7 : 6, total: 7, checkedAt: '2026-09-16T01:00:00Z', issueNumber: userId, runId: 123, ...extra });
 const data = () => ({ ...Core.emptyBoard(), updatedAt: '2026-09-16T01:00:00Z', entries: [entry(1, 'alice', 90), entry(2, 'bob', 90), entry(3, 'carol', 75), entry(1, 'alice', 325, { course: 'scenarios', maxScore: 325, passed: 20, total: 20 })] });
@@ -93,4 +94,13 @@ test('이전 기록 안내와 본인 삭제 양식, 공개 동의 없이 제출 
   expect(url.searchParams.get('action')).toBe('delete');
   expect(url.searchParams.get('course')).toBe('scenarios');
   expect(url.searchParams.has('userId')).toBe(false);
+});
+
+test('순위 새로고침은 CDN의 삭제 전 기록 대신 최신 데이터를 표시한다', async ({ page }) => {
+  await page.route(raw, route => route.fulfill({ json: data() }));
+  await page.route('https://api.github.com/repos/nowcika/git-lab-practice/contents/data/leaderboard.json*', route => route.fulfill({ json: Core.emptyBoard() }));
+  await page.goto('/#leaderboard');
+  await expect(page.locator('#leaderboardRows tr')).toHaveCount(3);
+  await page.locator('#leaderboardRefresh').click();
+  await expect(page.locator('#leaderboardRows')).toContainText('아직 등록된 점수가 없습니다');
 });

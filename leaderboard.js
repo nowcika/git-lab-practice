@@ -75,10 +75,19 @@
     previous.disabled = page === 0; next.disabled = (page + 1) * size >= filtered.length;
     section.querySelectorAll('[data-board-course]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.boardCourse === course)));
   }
-  async function load() {
+  async function load(fresh = false) {
     refresh.disabled = true; status.textContent = '공개 순위를 불러오는 중입니다…';
     try {
-      let response = await fetch(`${rawUrl}?v=${Date.now()}`, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
+      let response;
+      if (fresh) {
+        try {
+          response = await fetch(`https://api.github.com/repos/${platform}/contents/data/leaderboard.json?ref=leaderboard-data&v=${Date.now()}`, {
+            credentials: 'omit', headers: { Accept: 'application/vnd.github.raw+json' }, signal: AbortSignal.timeout(15000),
+          });
+          if (!response.ok) response = null;
+        } catch { /* Public API unavailable: retain the CDN fallback. */ }
+      }
+      if (!response) response = await fetch(`${rawUrl}?v=${Date.now()}`, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
       if (response.status === 404) response = await fetch('data/leaderboard.json', { credentials: 'omit' });
       if (!response.ok) throw new Error('load failed');
       board = Core.validateBoard(await response.json());
@@ -123,6 +132,6 @@
   }));
   search.addEventListener('input', () => { page = 0; render(); });
   previous.addEventListener('click', () => { page--; render(); }); next.addEventListener('click', () => { page++; render(); });
-  refresh.addEventListener('click', load);
+  refresh.addEventListener('click', () => load(true));
   updateSubmission(); render(); load();
 })();
