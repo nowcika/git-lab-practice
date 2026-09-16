@@ -114,11 +114,11 @@ test('conflict 문구 복사만 실패, merge 이력 포함 통과', async t => 
   f.git('-c', 'commit.gpgsign=false', 'merge', '--no-ff', 'side', '-m', 'merge team');
   r = await grade({ ...f.options, course: 'scenarios', offline: true }); assert.equal(item(r, 'conflict').state, 'pass');
 });
-test('주석 태그는 실제 커밋 SHA로 비교하고 전체 배점은 290점', async t => {
+test('주석 태그는 실제 커밋 SHA로 비교하고 전체 배점은 325점', async t => {
   const f = fixture(t); f.git('-c', 'tag.gpgsign=false', 'tag', '-a', 'solution-v1.0.0', '-m', 'done');
   const get = f.github.get; const sha = f.git('rev-parse', 'HEAD');
   f.github.get = endpoint => endpoint.includes('/git/ref/tags/') ? { object: { type: 'tag', sha: 'tag-object' } } : endpoint.endsWith('/git/tags/tag-object') ? { object: { type: 'commit', sha } } : get(endpoint);
-  const r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github }); assert.equal(item(r, 'tag').state, 'pass'); assert.equal(r.results.reduce((s, x) => s + x.points, 0), 290);
+  const r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github }); assert.equal(item(r, 'tag').state, 'pass'); assert.equal(r.results.reduce((s, x) => s + x.points, 0), 325);
 });
 test('원본 Fork가 아니면 로컬 정답이 있어도 온라인 시나리오 실패', async t => {
   const f = fixture(t); f.metadata.fork = false; f.write('instructor-update.md', 'UPSTREAM-SYNC-COMPLETE'); f.commit('copy'); f.git('branch', 'solution/upstream-sync');

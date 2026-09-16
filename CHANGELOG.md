@@ -235,3 +235,61 @@ reflog는 로컬 기록이라 공개 대조가 불가능하다고 봤지만, `gi
 
 - 로컬 검증기 단위 테스트 25개 통과 (정상 절차·출처 없음·조상 지정·객체 없음 4가지 경로)
 - Playwright 21개 통과, 공식 정답 저장소 290점 유지
+
+
+## 2026-09-16 (5차) — main이 앞서갔을 때의 rebase 시나리오 2개 추가
+
+"내 소스와 충돌이 나서 반영이 안 되는 상황"을 rebase로 처리하는 경험을 추가했습니다.
+**될 때와 안 될 때**를 분리해 두 시나리오로 구성했습니다.
+
+총점 **290점 → 325점**, 항목 **18개 → 20개**.
+
+### 06. push가 거부될 때 rebase로 따라잡기 (15점, `solution/pull-rebase`)
+
+실제로 `! [rejected] ... (non-fast-forward)`를 겪게 하는 것이 목적입니다.
+
+1. 동료 변경이 올라간 상태(`scenario/rebase-flow-base`)를 내 Fork에 push
+2. 그 사실을 모른 채 내 작업(`scenario/rebase-flow-topic`)으로 `reset --hard`
+3. `git push` → **거부됨**
+4. `git pull --rebase` → 서로 다른 파일이라 충돌 없이 재배치
+5. `git push` 성공
+
+채점: 두 파일의 고유 문구, merge 커밋 없는 선형 이력, **원본 기준 브랜치의 커밋 SHA가
+그대로 이력에 들어 있는지**(= 그 위로 rebase했는지), 내 커밋이 맨 위인지.
+
+### 07. rebase 도중 충돌 해결하기 (20점, `solution/rebase-conflict`)
+
+기준과 토픽이 **같은 줄**을 고쳐 rebase가 멈춥니다(modify/modify 충돌).
+02번 merge 충돌과 달리 `git rebase --continue`로 마무리해야 합니다.
+
+해결 결과에 세 줄이 모두 남아야 합니다.
+
+```
+배포 대상: production      ← 내 변경 유지
+담당: 플랫폼팀             ← 기준 쪽 변경 유지
+승인 코드: REBASE-CONFLICT-2026
+```
+
+채점: 세 줄, 충돌 표시가 남아 있지 않은지, merge 커밋 없는 선형 이력, 기준 커밋 포함 여부.
+한쪽만 고르거나 손으로 파일만 만들면 기준 커밋이 이력에 없어 실패합니다.
+
+활용 사례에 **rebase 중에는 `--ours`가 기준 브랜치, `--theirs`가 내 커밋**이라는
+merge와 반대되는 헷갈리는 지점을 넣었습니다.
+
+### 새로 만든 브랜치
+
+`nowcika/git-scenario-lab`
+- `scenario/rebase-flow-base`, `scenario/rebase-flow-topic` (서로 다른 파일 → 충돌 없음)
+- `scenario/rebase-conflict-base`, `scenario/rebase-conflict-topic` (같은 줄 → 충돌)
+
+`nowcika/git-scenario-solution`
+- `solution/pull-rebase`, `solution/rebase-conflict` — 실제 절차를 그대로 수행해 생성
+
+### 시나리오 번호 재배치
+
+새 두 과제를 rebase(05) 바로 뒤에 넣어 06·07로 두고, 이후 항목을 08~19로 다시 번호를
+매겼습니다. `id`는 그대로라 기존 링크와 채점 코드는 영향을 받지 않습니다.
+
+### API 호출 수
+
+시나리오 채점 1회 약 46회 → 약 53회. 화면 안내는 "약 55회", 사전 한도 확인값은 55입니다.

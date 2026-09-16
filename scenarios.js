@@ -163,7 +163,89 @@ git push -u origin solution/rebase`, checks:['base-update.txt와 topic.txt가 �
         ['merge와의 차이', 'merge는 합친 사실을 남기고, rebase는 한 줄로 정리합니다.']
       ]]
     ] },
-  { id:'reset', no:'06', title:'git reset으로 최근 커밋 제거하기', points:15, level:'History · Reset', goal:'아직 공유하면 안 되는 최근 실험 커밋을 브랜치에서 제거하고 안정 상태로 되돌립니다.', commands:`git fetch upstream
+  { id:'pullrebase', no:'06', title:'push가 거부될 때 rebase로 따라잡기', points:15, level:'Sync · Pull Rebase', goal:'원격이 앞서 있어 push가 거부된 상황을 pull --rebase로 해결하고 선형 이력을 유지합니다.', commands:`git fetch upstream
+
+# 1) 동료 변경이 이미 올라가 있는 상태를 내 Fork에 만듭니다.
+git switch -c solution/pull-rebase upstream/scenario/rebase-flow-base
+git push -u origin solution/pull-rebase
+
+# 2) 그 사실을 모른 채 내 작업만 들고 있는 상태로 되돌립니다.
+git reset --hard upstream/scenario/rebase-flow-topic
+
+# 3) 그대로 push하면 거부됩니다. 메시지를 직접 확인하세요.
+git push origin solution/pull-rebase
+#  ! [rejected]  solution/pull-rebase -> solution/pull-rebase (non-fast-forward)
+#  hint: Updates were rejected because the tip of your current branch is behind
+
+# 4) 원격 변경 위로 내 커밋을 옮겨 붙입니다. 이번에는 충돌이 없습니다.
+git pull --rebase origin solution/pull-rebase
+git log --oneline --graph -3
+
+# 5) 이제 push가 통과합니다.
+git push origin solution/pull-rebase`, checks:['3번에서 `! [rejected]`와 `non-fast-forward` 메시지를 직접 확인했는가?', '`git pull`(merge)과 `git pull --rebase`가 만드는 이력의 차이를 이해했는가?', '최종 이력에 merge 커밋이 없고 내 커밋이 동료 커밋 **위에** 있는가?', 'service/api.md와 service/ui.md가 모두 남아 있는가?', '거부됐다고 `--force`로 밀어버리면 동료 커밋이 사라진다는 점을 이해했는가?'], verify:'두 파일의 고유 문구, merge 커밋이 없는 선형 이력, 그리고 원본 기준 브랜치의 커밋 SHA가 내 이력에 그대로 들어 있는지 확인합니다. 내 커밋이 맨 위에 있어야 합니다.',
+    usage:[
+      ['push가 거부됐을 때', [
+        ['git push → ! [rejected] non-fast-forward', '원격에 내가 모르는 커밋이 있다는 뜻입니다. 강제로 밀지 말고 먼저 가져오세요.'],
+        ['git fetch origin && git log HEAD..origin/<브랜치>', '원격에만 있는 커밋이 무엇인지 먼저 확인합니다.'],
+        ['git pull --rebase', '원격 커밋 위로 내 커밋을 옮겨 붙입니다. 이력이 한 줄로 유지됩니다.'],
+        ['git pull --ff-only', '빨리 감기가 가능할 때만 받아옵니다. 의도치 않은 merge를 막습니다.'],
+        ['git push --force-with-lease', '정말 덮어써야 할 때만. 내가 마지막으로 본 상태와 다르면 거부되어 남의 커밋을 지키지 못하는 사고를 막습니다.'],
+        ['git push --force', '남의 커밋을 지울 수 있습니다. 공유 브랜치에서는 쓰지 마세요.']
+      ]],
+      ['pull의 세 가지 동작', [
+        ['git pull', 'fetch + merge. 원격과 합친 merge 커밋이 생깁니다.'],
+        ['git pull --rebase', 'fetch + rebase. merge 커밋 없이 내 커밋을 위로 옮깁니다.'],
+        ['git pull --ff-only', '빨리 감기만 허용. 합칠 것이 있으면 멈추고 알려 줍니다.'],
+        ['git config pull.rebase true', '이 저장소에서 pull을 항상 rebase로 동작하게 합니다.'],
+        ['git config --global pull.ff only', '전역 기본값을 안전하게 바꾸는 흔한 설정입니다.']
+      ]]
+    ] },
+  { id:'rebaseconflict', no:'07', title:'rebase 도중 충돌 해결하기', points:20, level:'Conflict · Rebase', goal:'기준 브랜치가 같은 줄을 먼저 바꿔 rebase가 멈춘 상황을 직접 해결하고 이어서 진행합니다.', commands:`git fetch upstream
+git switch -c solution/rebase-conflict upstream/scenario/rebase-conflict-topic
+
+# 기준 쪽이 같은 줄을 먼저 바꿔 두었기 때문에 rebase가 멈춥니다.
+git rebase upstream/scenario/rebase-conflict-base
+#  CONFLICT (content): Merge conflict in config/deploy-target.md
+
+git status     # rebase in progress 와 both modified 확인
+git diff       # 충돌 표시 확인
+
+# config/deploy-target.md를 열어 충돌 표시를 지우고
+# 양쪽 의도를 모두 살려 아래 세 줄이 남도록 정리합니다.
+#   배포 대상: production
+#   담당: 플랫폼팀
+#   승인 코드: REBASE-CONFLICT-2026
+
+git add config/deploy-target.md
+git rebase --continue          # git commit 이 아닙니다
+git log --oneline -3
+git push -u origin solution/rebase-conflict
+
+# 처음부터 다시 하고 싶으면 언제든
+# git rebase --abort`, checks:['rebase가 멈췄을 때 `git status`가 rebase in progress를 보여 주는가?', '충돌 표시 3종(`<<<<<<<`, `=======`, `>>>>>>>`)을 모두 지웠는가?', '한쪽만 고르지 않고 세 줄이 모두 남았는가?', '`git commit`이 아니라 `git rebase --continue`로 마무리했는가?', '`git rebase --abort`가 시작 전 상태로 되돌린다는 것을 확인했는가?', 'merge와 달리 rebase는 merge 커밋을 남기지 않는다는 점을 확인했는가?'], verify:'해결한 파일의 필수 세 줄, 충돌 표시가 남아 있지 않은지, merge 커밋이 없는 선형 이력, 그리고 원본 기준 브랜치의 커밋이 이력에 포함됐는지 확인합니다.',
+    usage:[
+      ['rebase가 멈췄을 때', [
+        ['git status', '어떤 파일이 both modified인지, 지금이 rebase 중인지 알려 줍니다.'],
+        ['git diff', '충돌 부분만 추려서 보여 줍니다.'],
+        ['git add <파일> && git rebase --continue', '해결 후 이어서 진행합니다. 새로 commit 하지 않습니다.'],
+        ['git rebase --skip', '이 커밋을 버리고 다음으로 넘어갑니다. 내 변경이 사라지므로 주의하세요.'],
+        ['git rebase --abort', 'rebase를 취소하고 시작 전 상태로 완전히 되돌립니다.'],
+        ['git rebase --edit-todo', '남은 작업 목록을 수정합니다(대화형 rebase).']
+      ]],
+      ['rebase에서 ours와 theirs는 반대입니다', [
+        ['git checkout --ours <파일>', 'rebase 중에는 **기준 브랜치**(옮겨 붙일 대상) 쪽입니다.'],
+        ['git checkout --theirs <파일>', 'rebase 중에는 **내가 옮기는 커밋** 쪽입니다. merge 때와 반대라 헷갈리기 쉽습니다.'],
+        ['git checkout --conflict=merge <파일>', '충돌 표시가 있는 원래 상태로 되돌려 다시 해결합니다.'],
+        ['git rerere', '같은 충돌을 반복 해결할 때 이전 해결책을 재사용합니다.']
+      ]],
+      ['merge로 해결할 때와의 차이', [
+        ['git merge <기준>', 'merge 커밋이 생기고 양쪽 이력이 그대로 남습니다.'],
+        ['git rebase <기준>', '내 커밋이 기준 위로 복제되어 한 줄로 정리됩니다. SHA가 바뀝니다.'],
+        ['이미 공유한 브랜치', 'rebase는 SHA를 바꾸므로 동료가 받은 커밋이 어긋납니다. merge를 쓰세요.'],
+        ['아직 내 PC에만 있는 브랜치', 'rebase로 정리하면 리뷰하기 좋은 깔끔한 이력이 됩니다.']
+      ]]
+    ] },
+  { id:'reset', no:'08', title:'git reset으로 최근 커밋 제거하기', points:15, level:'History · Reset', goal:'아직 공유하면 안 되는 최근 실험 커밋을 브랜치에서 제거하고 안정 상태로 되돌립니다.', commands:`git fetch upstream
 git switch -c solution/reset upstream/scenario/reset
 git log --oneline -3
 # 최근 실험 커밋과 작업 파일을 함께 제거합니다.
@@ -187,7 +269,7 @@ git push -u origin solution/reset`, checks:['reset 전 두 커밋의 순서를 l
         ['git stash pop', '치워 둔 변경을 다시 꺼냅니다.']
       ]]
     ] },
-  { id:'reflog', no:'07', title:'git reflog로 잃어버린 커밋 복구하기', points:15, level:'Recovery · Reflog', goal:'직접 만든 커밋을 reset으로 잃어버린 뒤 reflog에서 SHA를 찾아 복구합니다.', commands:`git fetch upstream
+  { id:'reflog', no:'09', title:'git reflog로 잃어버린 커밋 복구하기', points:15, level:'Recovery · Reflog', goal:'직접 만든 커밋을 reset으로 잃어버린 뒤 reflog에서 SHA를 찾아 복구합니다.', commands:`git fetch upstream
 git switch -c solution/reflog upstream/scenario/reflog-base
 echo "REFLOG-RECOVERED-COMMIT" > recovered-note.txt
 git add recovered-note.txt
@@ -220,7 +302,7 @@ git push -u origin solution/reflog`, checks:['reset 직후 recovered-note.txt가
         ['git stash list / git stash apply', 'stash로 치워 둔 변경도 같은 방식으로 복구합니다.']
       ]]
     ] },
-  { id:'amend', no:'08', title:'git commit --amend로 마지막 커밋 수정하기', points:15, level:'History · Amend', goal:'마지막 커밋의 파일 오타와 커밋 메시지를 새 커밋을 추가하지 않고 바로잡습니다.', commands:`git fetch upstream
+  { id:'amend', no:'10', title:'git commit --amend로 마지막 커밋 수정하기', points:15, level:'History · Amend', goal:'마지막 커밋의 파일 오타와 커밋 메시지를 새 커밋을 추가하지 않고 바로잡습니다.', commands:`git fetch upstream
 git switch -c solution/amend upstream/scenario/amend
 # release-note.md를 아래처럼 수정합니다.
 # # Release Note
@@ -245,7 +327,7 @@ git push -u origin solution/amend`, checks:['수정 대상이 가장 최근 커�
         ['push 이후라면', 'git push --force-with-lease 가 필요하며, 공유 브랜치에서는 팀과 합의하세요.']
       ]]
     ] },
-  { id:'cherry', no:'09', title:'git cherry-pick으로 필요한 커밋만 가져오기', points:15, level:'History · Cherry-pick', goal:'다른 브랜치 전체를 병합하지 않고 긴급 수정 커밋 하나만 선택해 적용합니다.', commands:`git fetch upstream
+  { id:'cherry', no:'11', title:'git cherry-pick으로 필요한 커밋만 가져오기', points:15, level:'History · Cherry-pick', goal:'다른 브랜치 전체를 병합하지 않고 긴급 수정 커밋 하나만 선택해 적용합니다.', commands:`git fetch upstream
 git switch -c solution/cherry-pick main
 # 소스 브랜치의 커밋 SHA를 확인합니다.
 git log --oneline upstream/scenario/cherry-source -1
@@ -268,7 +350,7 @@ git push -u origin solution/cherry-pick`, checks:['소스 브랜치의 최신 SH
         ['git show <SHA>', '가져오기 전에 변경 내용을 확인합니다.']
       ]]
     ] },
-  { id:'diff', no:'10', title:'git diff로 두 상태 비교하기', points:15, level:'Inspect · Diff', goal:'두 원격 브랜치의 파일·줄 변경을 비교하고 실제 patch 형식의 분석 결과를 제출합니다.', commands:`git fetch upstream
+  { id:'diff', no:'12', title:'git diff로 두 상태 비교하기', points:15, level:'Inspect · Diff', goal:'두 원격 브랜치의 파일·줄 변경을 비교하고 실제 patch 형식의 분석 결과를 제출합니다.', commands:`git fetch upstream
 git switch -c solution/diff main
 mkdir -p reports
 git diff upstream/scenario/diff-base..upstream/scenario/diff-target > reports/change.patch
@@ -297,7 +379,7 @@ git push -u origin solution/diff`, checks:['비교 순서가 base → target인�
         ['git apply --check change.patch', '적용 가능한지 미리 확인만 합니다.']
       ]]
     ] },
-  { id:'show', no:'11', title:'git show로 특정 커밋 조사하기', points:15, level:'Inspect · Show', goal:'브랜치의 최신 커밋 하나를 조사해 작성자·메시지·변경 내용을 보고서로 남깁니다.', commands:`git fetch upstream
+  { id:'show', no:'13', title:'git show로 특정 커밋 조사하기', points:15, level:'Inspect · Show', goal:'브랜치의 최신 커밋 하나를 조사해 작성자·메시지·변경 내용을 보고서로 남깁니다.', commands:`git fetch upstream
 git switch -c solution/show main
 git log --oneline upstream/scenario/show-source -1
 git show --stat upstream/scenario/show-source
@@ -335,7 +417,7 @@ git push -u origin solution/show`, checks:['`git show`가 commit 정보와 patch
         ['git describe <SHA>', '가장 가까운 태그를 기준으로 커밋을 사람이 읽기 쉽게 표현합니다.']
       ]]
     ] },
-  { id:'patch', no:'12', title:'format-patch와 git am으로 변경 전달하기', points:15, level:'Patch · Email Flow', goal:'소스 커밋을 patch 파일로 내보낸 뒤 다른 브랜치에 커밋 정보와 함께 적용합니다.', commands:`git fetch upstream
+  { id:'patch', no:'14', title:'format-patch와 git am으로 변경 전달하기', points:15, level:'Patch · Email Flow', goal:'소스 커밋을 patch 파일로 내보낸 뒤 다른 브랜치에 커밋 정보와 함께 적용합니다.', commands:`git fetch upstream
 # 소스 브랜치 최신 커밋을 이메일 patch 파일로 만듭니다.
 git format-patch -1 upstream/scenario/patch-source --stdout > transfer.patch
 less transfer.patch
@@ -362,7 +444,7 @@ git push -u origin solution/patch`, checks:['patch 안에 From, Date, Subject와
         ['git am --show-current-patch', '멈춘 지점의 patch 내용을 확인합니다.']
       ]]
     ] },
-  { id:'blame', no:'13', title:'git blame으로 특정 줄의 변경자 찾기', points:15, level:'Inspect · Blame', goal:'여러 사람이 편집한 파일에서 문제의 줄을 마지막으로 변경한 작성자와 커밋을 추적합니다.', commands:`git fetch upstream
+  { id:'blame', no:'15', title:'git blame으로 특정 줄의 변경자 찾기', points:15, level:'Inspect · Blame', goal:'여러 사람이 편집한 파일에서 문제의 줄을 마지막으로 변경한 작성자와 커밋을 추적합니다.', commands:`git fetch upstream
 git switch -c solution/blame main
 git blame upstream/scenario/blame -- audit-checklist.md
 git blame -L 4,4 upstream/scenario/blame -- audit-checklist.md
@@ -399,7 +481,7 @@ git push -u origin solution/blame`, checks:['파일 전체 blame과 `-L 4,4`의 
         ['git bisect start', '언제부터 문제가 생겼는지 이진 탐색으로 찾습니다.']
       ]]
     ] },
-  { id:'workflow', no:'14', title:'브랜치를 오가며 커밋 이동·수정하기', points:20, level:'Branch · Commit Workflow', goal:'두 브랜치에서 독립 작업하고 한 커밋을 다른 브랜치로 옮긴 뒤 amend로 다듬습니다.', commands:`git fetch upstream
+  { id:'workflow', no:'16', title:'브랜치를 오가며 커밋 이동·수정하기', points:20, level:'Branch · Commit Workflow', goal:'두 브랜치에서 독립 작업하고 한 커밋을 다른 브랜치로 옮긴 뒤 amend로 다듬습니다.', commands:`git fetch upstream
 # 첫 번째 브랜치 작업
 git switch -c solution/branch-a upstream/scenario/branch-workflow
 echo "BRANCH-A-ORIGINAL" > frontend-task.txt
@@ -445,7 +527,7 @@ git status`, checks:['브랜치 이동 전 변경을 커밋해 작업 폴더가 
         ['git reset --hard <SHA>', '원래 브랜치에서 옮긴 커밋을 걷어냅니다(공유 전에만).']
       ]]
     ] },
-  { id:'release', no:'15', title:'GitHub Actions로 Release 자동 생성하기', points:25, level:'CI/CD · Release', goal:'release tag를 push하면 Actions가 실행되어 실제 Release와 asset을 자동으로 생성하게 합니다.', commands:`git fetch upstream
+  { id:'release', no:'17', title:'GitHub Actions로 Release 자동 생성하기', points:25, level:'CI/CD · Release', goal:'release tag를 push하면 Actions가 실행되어 실제 Release와 asset을 자동으로 생성하게 합니다.', commands:`git fetch upstream
 git switch -c solution/actions-release upstream/scenario/actions-release
 mkdir -p .github/workflows
 cat > .github/workflows/release.yml <<'YAML'
@@ -509,7 +591,7 @@ git push origin release-v1.0.0
         ['gh run rerun <run-id>', '코드 변경 없이 같은 실행을 다시 돌립니다.']
       ]]
     ] },
-  { id:'pages', no:'16', title:'GitHub Pages로 홈페이지 서비스하기', points:25, level:'Deploy · Pages', goal:'Fork의 solution/pages 브랜치에 정적 홈페이지를 만들고 /docs 폴더를 공개 서비스합니다.', commands:`git fetch upstream
+  { id:'pages', no:'18', title:'GitHub Pages로 홈페이지 서비스하기', points:25, level:'Deploy · Pages', goal:'Fork의 solution/pages 브랜치에 정적 홈페이지를 만들고 /docs 폴더를 공개 서비스합니다.', commands:`git fetch upstream
 git switch -c solution/pages upstream/scenario/pages
 # docs/index.html을 편집해 제목·설명을 꾸미고 아래 문구를 넣습니다.
 # PAGES-LIVE-2026
@@ -587,7 +669,7 @@ git push
         ['404가 뜰 때', 'Public 여부, 폴더 최상위 index.html, 대소문자를 차례로 확인합니다.']
       ]]
     ] },
-  { id:'tag', no:'17', title:'완료 지점에 tag 만들기', points:5, level:'Tag', goal:'모든 해결이 끝난 커밋에 주석 태그를 만들고 원격으로 push합니다.', commands:`# 원하는 solution 브랜치에서 실행합니다.
+  { id:'tag', no:'19', title:'완료 지점에 tag 만들기', points:5, level:'Tag', goal:'모든 해결이 끝난 커밋에 주석 태그를 만들고 원격으로 push합니다.', commands:`# 원하는 solution 브랜치에서 실행합니다.
 git tag -a solution-v1.0.0 -m "complete scenario lab"
 git push origin solution-v1.0.0
 git show solution-v1.0.0`, checks:['태그 이름이 정확히 `solution-v1.0.0`인가?', '`git push origin solution-v1.0.0`을 실행했는가?', 'GitHub 저장소의 Tags 화면에서 보이는가?'], verify:'Fork 저장소의 원격 tag ref 존재 여부를 검사합니다.',
@@ -612,7 +694,7 @@ git show solution-v1.0.0`, checks:['태그 이름이 정확히 `solution-v1.0.0`
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
 
 function scenarioAnswerUrl(id) {
-  const refs={fork:'main',upstream:'solution/upstream-sync',conflict:'solution/conflict',external:'solution/external-remote',revert:'solution/revert',rebase:'solution/rebase',reset:'solution/reset',reflog:'solution/reflog',amend:'solution/amend',cherry:'solution/cherry-pick',diff:'solution/diff',show:'solution/show',patch:'solution/patch',blame:'solution/blame',workflow:'solution/branch-b',release:'solution/actions-release',pages:'solution/pages',tag:'solution/pages'};
+  const refs={fork:'main',upstream:'solution/upstream-sync',conflict:'solution/conflict',pullrebase:'solution/pull-rebase',rebaseconflict:'solution/rebase-conflict',external:'solution/external-remote',revert:'solution/revert',rebase:'solution/rebase',reset:'solution/reset',reflog:'solution/reflog',amend:'solution/amend',cherry:'solution/cherry-pick',diff:'solution/diff',show:'solution/show',patch:'solution/patch',blame:'solution/blame',workflow:'solution/branch-b',release:'solution/actions-release',pages:'solution/pages',tag:'solution/pages'};
   if(id==='release') return `https://github.com/${OFFICIAL_ANSWER}/releases/tag/release-v1.0.0`;
   if(id==='pages') return 'https://nowcika.github.io/git-scenario-solution/';
   if(id==='tag') return `https://github.com/${OFFICIAL_ANSWER}/releases/tag/solution-v1.0.0`;
@@ -628,10 +710,10 @@ function usageHtml(usage) {
 }
 
 if (scenarioRoot) {
-  scenarioRoot.innerHTML = `<div class="scenario-start"><div><span class="scenario-kicker">START HERE</span><h3>하나의 Fork에서 17가지 문제를 해결합니다</h3><p>각 시나리오는 독립된 <code>solution/*</code> 브랜치를 사용하므로 순서대로 진행하거나 필요한 항목만 연습할 수 있습니다. 각 카드의 <strong>명령어 활용 사례</strong>에서 옵션별 차이를 함께 확인하세요.</p></div><div class="scenario-start-actions"><a href="https://github.com/nowcika/git-scenario-lab/fork" target="_blank" rel="noopener noreferrer">① 원본 저장소 Fork ↗</a><a href="https://github.com/nowcika/git-scenario-lab" target="_blank" rel="noopener noreferrer">원본 구조 보기 ↗</a><a href="https://github.com/nowcika/git-scenario-library" target="_blank" rel="noopener noreferrer">외부 저장소 보기 ↗</a><a href="https://github.com/${OFFICIAL_ANSWER}" target="_blank" rel="noopener noreferrer">전체 정답 저장소 ↗</a></div></div>
+  scenarioRoot.innerHTML = `<div class="scenario-start"><div><span class="scenario-kicker">START HERE</span><h3>하나의 Fork에서 19가지 문제를 해결합니다</h3><p>각 시나리오는 독립된 <code>solution/*</code> 브랜치를 사용하므로 순서대로 진행하거나 필요한 항목만 연습할 수 있습니다. 각 카드의 <strong>명령어 활용 사례</strong>에서 옵션별 차이를 함께 확인하세요.</p></div><div class="scenario-start-actions"><a href="https://github.com/nowcika/git-scenario-lab/fork" target="_blank" rel="noopener noreferrer">① 원본 저장소 Fork ↗</a><a href="https://github.com/nowcika/git-scenario-lab" target="_blank" rel="noopener noreferrer">원본 구조 보기 ↗</a><a href="https://github.com/nowcika/git-scenario-library" target="_blank" rel="noopener noreferrer">외부 저장소 보기 ↗</a><a href="https://github.com/${OFFICIAL_ANSWER}" target="_blank" rel="noopener noreferrer">전체 정답 저장소 ↗</a></div></div>
   <div class="scenario-flow"><span><b>1</b> Fork</span><i>→</i><span><b>2</b> Clone</span><i>→</i><span><b>3</b> Remote 연결</span><i>→</i><span><b>4</b> 문제 해결</span><i>→</i><span><b>5</b> Push·채점</span></div>
   <div class="scenario-list">${scenarioDefinitions.map((s, index) => `<details class="scenario" id="scenario-${s.id}" ${s.id==='fork'?'open':''}><summary><span class="scenario-no">${s.no}</span><div><small>${escapeHtml(s.level)}</small><strong>${escapeHtml(s.title)}</strong><p>${escapeHtml(s.goal)}</p></div><b>${s.points}점</b></summary><div class="scenario-body"><div><h4>실행 순서</h4><pre><code data-commands="${index}"></code><button class="scenario-copy" type="button" aria-label="${escapeHtml(s.title)} 명령 복사">명령 복사</button></pre><p class="scenario-verify"><strong>자동 채점 기준</strong>${escapeHtml(s.verify)}</p>${usageHtml(s.usage)}</div><div><h4>막혔을 때 확인</h4><ul>${s.checks.map(c=>`<li>${c}</li>`).join('')}</ul><div class="scenario-resource-links"><a class="scenario-doc" href="https://git-scm.com/docs" target="_blank" rel="noopener noreferrer">Git 공식 명령 문서 ↗</a><a class="scenario-answer" href="${scenarioAnswerUrl(s.id)}" target="_blank" rel="noopener noreferrer">정답 결과 보기 ↗</a></div></div></div></details>`).join('')}</div>
-  <div class="scenario-grade"><div class="scenario-grade-head"><div><span class="eyebrow">SCENARIO GRADER</span><h3>내 Fork 결과 채점</h3><p>Fork가 Public이어야 인증 없이 확인할 수 있습니다. 채점 1회에 GitHub API를 약 50회 사용합니다.</p></div><button id="scenarioGradeButton" class="grade-button">시나리오 채점하기 <span>→</span></button></div><label for="scenarioRepoUrl">내 Fork 저장소 URL</label><input id="scenarioRepoUrl" type="url" placeholder="https://github.com/내사용자이름/git-scenario-lab" autocomplete="url"><div id="scenarioStatus" role="status" aria-live="polite"></div><div id="scenarioResults" hidden><div class="scenario-score"><strong id="scenarioScore">0</strong><span>/ 290점</span><p id="scenarioScoreMessage"></p></div><div id="scenarioResultList" class="result-list"></div></div></div>`;
+  <div class="scenario-grade"><div class="scenario-grade-head"><div><span class="eyebrow">SCENARIO GRADER</span><h3>내 Fork 결과 채점</h3><p>Fork가 Public이어야 인증 없이 확인할 수 있습니다. 채점 1회에 GitHub API를 약 55회 사용합니다.</p></div><button id="scenarioGradeButton" class="grade-button">시나리오 채점하기 <span>→</span></button></div><label for="scenarioRepoUrl">내 Fork 저장소 URL</label><input id="scenarioRepoUrl" type="url" placeholder="https://github.com/내사용자이름/git-scenario-lab" autocomplete="url"><div id="scenarioStatus" role="status" aria-live="polite"></div><div id="scenarioResults" hidden><div class="scenario-score"><strong id="scenarioScore">0</strong><span>/ 325점</span><p id="scenarioScoreMessage"></p></div><div id="scenarioResultList" class="result-list"></div></div></div>`;
   // 명령 블록은 innerHTML이 아니라 textContent로 넣어 <브랜치> 같은 표기가 사라지지 않게 합니다.
   scenarioRoot.querySelectorAll('code[data-commands]').forEach(code => {
     code.textContent = scenarioDefinitions[Number(code.dataset.commands)].commands;
@@ -672,6 +754,11 @@ function comparableLines(patch) {
     return line;
   }).filter(line => /^[-+@]/.test(line) && line.trim() !== '+' && line.trim() !== '-');
 }
+// 원본 기준 브랜치의 최신 커밋 SHA입니다. rebase하면 이 커밋이 그대로 이력에 남습니다.
+async function upstreamTipSha(ref) {
+  const data = await api(`${UPSTREAM_BASE}/commits?sha=${encodeURIComponent(ref)}&per_page=1`);
+  return commitList(data)[0]?.sha || null;
+}
 // Pages API는 인증이 필요합니다. 토큰이 없으면 배포 방식 표시를 생략합니다.
 async function pagesBuildType(base) {
   if (!tokenStore.read()) return null;
@@ -702,9 +789,9 @@ async function gradeScenarios() {
   button.disabled=true; resetApiUsage();
   status.textContent='Fork와 해결 브랜치를 확인하는 중입니다…'; document.getElementById('scenarioResults').hidden=true;
   try {
-    const quota = await checkQuota(48);
+    const quota = await checkQuota(55);
     if (quota && !quota.enough) {
-      status.textContent = `GitHub API 남은 한도가 ${quota.remaining}회뿐입니다(시나리오 채점 1회에 약 50회 필요). 약 ${quota.minutes}분 뒤에 다시 시도하거나 결과 확인 영역의 토큰 칸을 채우세요.`;
+      status.textContent = `GitHub API 남은 한도가 ${quota.remaining}회뿐입니다(시나리오 채점 1회에 약 55회 필요). 약 ${quota.minutes}분 뒤에 다시 시도하거나 결과 확인 영역의 토큰 칸을 채우세요.`;
       return;
     }
     const base=`/repos/${encodeURIComponent(parsed.owner)}/${encodeURIComponent(parsed.name)}`;
@@ -732,6 +819,30 @@ async function gradeScenarios() {
       async()=>{ const content=await scenarioContent(base,'shared-config.json','solution/external-remote'); const commits=await scenarioCommits(base,'solution/external-remote',20); return content?.includes('REMOTE-LIBRARY-V1')&&hasMessage(commits,/import shared config/i)?passed('외부 remote 자료와 반영 커밋 확인'):failed('외부 저장소의 shared-config.json과 지정 커밋 메시지를 확인하세요.'); },
       async()=>{ const secret=await api(`${base}/contents/secrets.env?ref=${encodeURIComponent('solution/revert')}`); const config=await scenarioContent(base,'app.conf','solution/revert'); const commits=await scenarioCommits(base,'solution/revert',20); return secret.missing&&config?.includes('production=true')&&hasMessage(commits,/^Revert /i)?passed('잘못된 파일 제거와 Revert 이력 확인'):failed('secrets.env는 없어야 하고 app.conf와 Revert 커밋은 남아야 합니다.'); },
       async()=>{ const baseFile=await scenarioContent(base,'notes/base-update.txt','solution/rebase'); const topicFile=await scenarioContent(base,'notes/topic.txt','solution/rebase'); const commits=await scenarioCommits(base,'solution/rebase',20); return baseFile&&topicFile&&isLinear(commits)&&hasMessage(commits,/notification topic note/)&&hasMessage(commits,/common deployment rule/)?passed('기준·토픽 변경과 선형 이력 확인'):failed('두 결과 파일과 두 커밋이 merge 없이 선형 이력에 있어야 합니다.'); },
+      async()=>{
+        const apiNote=await scenarioContent(base,'service/api.md','solution/pull-rebase');
+        if(!apiNote?.includes('FLOW-BASE-API-2026')) return failed('solution/pull-rebase에 동료 변경(service/api.md)이 없습니다. 기준 브랜치를 먼저 push했는지 확인하세요.');
+        const uiNote=await scenarioContent(base,'service/ui.md','solution/pull-rebase');
+        if(!uiNote?.includes('FLOW-TOPIC-UI-2026')) return failed('solution/pull-rebase에 내 변경(service/ui.md)이 없습니다. 강제 push로 덮어쓰지 않았는지 확인하세요.');
+        const commits=await scenarioCommits(base,'solution/pull-rebase',20);
+        if(!isLinear(commits)) return failed('merge 커밋이 있습니다. git pull --rebase로 다시 정리하세요.');
+        const baseTip=await upstreamTipSha('scenario/rebase-flow-base');
+        if(!baseTip) return unknown('원본 기준 브랜치를 확인하지 못했습니다. 잠시 후 다시 시도하세요.');
+        if(!commitList(commits).some(c=>c.sha===baseTip)) return failed('동료 커밋이 이력에 그대로 남아 있지 않습니다. 기준 브랜치 위로 rebase했는지 확인하세요.');
+        if(!/^feat: add ui service note/.test(tipMessage(commits))) return failed('내 커밋이 맨 위에 있어야 합니다. 동료 커밋 위로 내 커밋을 옮겨 붙이세요.');
+        return passed(`push 거부 후 rebase로 따라잡은 선형 이력 확인 (기준 ${baseTip.slice(0,7)} 위에 내 커밋)`); },
+      async()=>{
+        const target=await scenarioContent(base,'config/deploy-target.md','solution/rebase-conflict');
+        if(!target) return failed('solution/rebase-conflict에 config/deploy-target.md가 없습니다.');
+        if(/<{7}|={7}|>{7}/.test(target)) return failed('충돌 표시가 그대로 남아 있습니다. <<<<<<<, =======, >>>>>>> 를 모두 지우세요.');
+        const missing=['배포 대상: production','담당: 플랫폼팀','승인 코드: REBASE-CONFLICT-2026'].filter(line=>!target.includes(line));
+        if(missing.length) return failed(`해결 결과에 빠진 줄: ${missing.join(' / ')} — 한쪽만 고르지 말고 양쪽 의도를 합치세요.`);
+        const commits=await scenarioCommits(base,'solution/rebase-conflict',20);
+        if(!isLinear(commits)) return failed('merge 커밋이 있습니다. merge가 아니라 rebase로 해결하세요.');
+        const baseTip=await upstreamTipSha('scenario/rebase-conflict-base');
+        if(!baseTip) return unknown('원본 기준 브랜치를 확인하지 못했습니다. 잠시 후 다시 시도하세요.');
+        if(!commitList(commits).some(c=>c.sha===baseTip)) return failed('기준 브랜치 커밋이 이력에 없습니다. upstream/scenario/rebase-conflict-base 위로 rebase하세요.');
+        return passed(`rebase 충돌을 양쪽 의도대로 해결 (기준 ${baseTip.slice(0,7)} 위에 재배치)`); },
       async()=>{ const stable=await scenarioContent(base,'stable-config.txt','solution/reset'); const unwanted=await api(`${base}/contents/unwanted-experiment.txt?ref=${encodeURIComponent('solution/reset')}`); const commits=await scenarioCommits(base,'solution/reset',10); return stable?.includes('STABLE-CONFIG-V1')&&unwanted.missing&&/stable configuration/.test(tipMessage(commits))?passed('hard reset 후 안정 커밋 상태 확인'):failed('stable-config.txt만 남고 해결 브랜치 끝이 안정 커밋이어야 합니다.'); },
       async()=>{
         const recovered=await scenarioContent(base,'recovered-note.txt','solution/reflog');
@@ -858,7 +969,7 @@ async function gradeScenarios() {
 
 function renderScenarioResults(checks,score){
   document.getElementById('scenarioScore').textContent=score;
-  document.getElementById('scenarioScoreMessage').textContent=score===290?'모든 실전 시나리오를 해결했습니다.':'실패 항목의 가이드를 열어 결과를 다시 확인하세요.';
+  document.getElementById('scenarioScoreMessage').textContent=score===325?'모든 실전 시나리오를 해결했습니다.':'실패 항목의 가이드를 열어 결과를 다시 확인하세요.';
   const list=document.getElementById('scenarioResultList');
   list.replaceChildren(...checks.map((result,index)=>{ const row=document.createElement('div'); row.className='result-item'; const mark=document.createElement('span'); mark.className=`result-mark ${result.state}`; mark.textContent=result.state==='pass'?'✓':result.state==='fail'?'×':'?'; const body=document.createElement('div'); const strong=document.createElement('strong'); strong.textContent=scenarioDefinitions[index].title; const p=document.createElement('p'); p.textContent=result.detail; body.append(strong,p); if(result.state!=='pass'){const a=document.createElement('a');a.className='result-guide';a.href=`#scenario-${scenarioDefinitions[index].id}`;a.textContent='시나리오 가이드 보기 ↑';a.addEventListener('click',()=>{const card=document.getElementById(`scenario-${scenarioDefinitions[index].id}`); if(card) card.open=true;});body.append(a);} const points=document.createElement('b');points.textContent=`${result.state==='pass'?scenarioDefinitions[index].points:0} / ${scenarioDefinitions[index].points}점`;row.append(mark,body,points);return row;}));
   document.getElementById('scenarioResults').hidden=false;

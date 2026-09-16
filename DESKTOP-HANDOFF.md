@@ -62,7 +62,7 @@ npm run report            # HTML 결과 보고서
 npm run serve             # http://127.0.0.1:4173 에서 직접 확인
 ```
 
-UI 테스트는 배포본이 아니라 **작업 중인 로컬 파일**을 검사합니다. 입력 검증, URL 파싱, git 버전 형식, 명령어 활용 사례 블록, 코드 자리표시자 보존, 모바일 레이아웃, 공식 정답 저장소 차단, 그리고 `?allowAnswerRepo=1` 테스트 모드에서의 290점과 18개 통과를 확인합니다. 최종 채점 화면은 `test-results/scenario-290-score.png`에 저장합니다.
+UI 테스트는 배포본이 아니라 **작업 중인 로컬 파일**을 검사합니다. 입력 검증, URL 파싱, git 버전 형식, 명령어 활용 사례 블록, 코드 자리표시자 보존, 모바일 레이아웃, 공식 정답 저장소 차단, 그리고 `?allowAnswerRepo=1` 테스트 모드에서의 325점과 20개 통과를 확인합니다. 최종 채점 화면은 `test-results/scenario-290-score.png`에 저장합니다.
 
 ## 현재 상태
 
@@ -79,7 +79,7 @@ UI 테스트는 배포본이 아니라 **작업 중인 로컬 파일**을 검사
 - 브라우저를 찾지 못함: `PLAYWRIGHT_BROWSERS_PATH=0`과 함께 설치했는지 확인
 - Chromium 없음: `PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium`
 - Linux 라이브러리 오류: `PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install --with-deps chromium`
-- 290점 미만: 실패 결과와 연결된 정답 브랜치 비교 (UI 290점 테스트는 `?allowAnswerRepo=1` 주소를 사용합니다)
+- 325점 미만: 실패 결과와 연결된 정답 브랜치 비교 (UI 290점 테스트는 `?allowAnswerRepo=1` 주소를 사용합니다)
 - Pages/Release 실패: GitHub Actions가 끝날 때까지 기다린 뒤 다시 실행
 
 `test-results/`, `playwright-report/`, `node_modules/`는 Git에 포함하지 않습니다.

@@ -9,7 +9,7 @@ Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안�
 
 ## Fork 기반 실전 시나리오
 
-별도 원본 저장소 [`nowcika/git-scenario-lab`](https://github.com/nowcika/git-scenario-lab)를 Fork해 해결하는 실전 과정도 제공합니다. upstream 동기화, conflict, 외부 remote, revert, rebase, reset, reflog 복구, amend, cherry-pick, diff, show, format-patch/git am, blame, 브랜치 이동과 커밋 수정, tag를 다룹니다. 각 과제는 `solution/*` 브랜치 또는 tag의 파일 내용과 Git 이력을 GitHub API로 자동 채점합니다.
+별도 원본 저장소 [`nowcika/git-scenario-lab`](https://github.com/nowcika/git-scenario-lab)를 Fork해 해결하는 실전 과정도 제공합니다. upstream 동기화, merge conflict, 외부 remote, revert, rebase, push 거부 후 pull --rebase, rebase 도중 충돌 해결, reset, reflog 복구, amend, cherry-pick, diff, show, format-patch/git am, blame, 브랜치 이동과 커밋 수정, Actions Release, Pages 배포, tag를 다룹니다. 각 과제는 `solution/*` 브랜치 또는 tag의 파일 내용과 Git 이력을 GitHub API로 자동 채점합니다.
 
 GitHub Actions로 Release를 자동 생성하고, GitHub Pages로 홈페이지를 배포하는 과제도 포함합니다. Pages는 **브랜치에서 바로 배포**하거나 **Actions workflow로 배포**하는 두 가지 경로 중 하나를 골라 진행할 수 있으며 어느 쪽이든 동일하게 채점합니다.
 
@@ -30,11 +30,11 @@ GitHub Actions로 Release를 자동 생성하고, GitHub Pages로 홈페이지�
 
 공식 정답은 [`nowcika/git-scenario-solution`](https://github.com/nowcika/git-scenario-solution)에서 확인할 수 있습니다. 각 시나리오 카드의 **정답 결과 보기**는 해당 해결 브랜치, 자동 생성 Release 또는 실제 Pages 사이트로 직접 연결됩니다.
 
-데스크톱에서 Chromium UI 검증을 이어서 실행하려면 [DESKTOP-HANDOFF.md](DESKTOP-HANDOFF.md)를 따르세요. 정답 URL 입력부터 290점 확인과 결과 화면 캡처까지 자동화돼 있습니다.
+데스크톱에서 Chromium UI 검증을 이어서 실행하려면 [DESKTOP-HANDOFF.md](DESKTOP-HANDOFF.md)를 따르세요. 정답 URL 입력부터 325점 확인과 결과 화면 캡처까지 자동화돼 있습니다.
 
 ## 사용자 PC의 로컬 저장소 검증
 
-로컬 Git 파일·커밋 이력과 로그인한 GitHub 계정, 원격 브랜치 SHA를 함께 검사할 수 있습니다. 초급 100점과 실전 290점 과정을 지원합니다.
+로컬 Git 파일·커밋 이력과 로그인한 GitHub 계정, 원격 브랜치 SHA를 함께 검사할 수 있습니다. 초급 100점과 실전 325점 과정을 지원합니다.
 
 ```bash
 npm run grade:local -- --repo /path/to/student-repo --course basic

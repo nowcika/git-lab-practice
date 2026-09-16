@@ -56,7 +56,7 @@ test('macOS와 Windows의 git --version 출력이 모두 통과한다', async ({
 
 test('명령어 활용 사례 블록이 모든 시나리오와 가이드에 있다', async ({ page }) => {
   await page.goto('/#scenarios');
-  await expect(page.locator('details.scenario details.usage')).toHaveCount(18);
+  await expect(page.locator('details.scenario details.usage')).toHaveCount(20);
   const first = page.locator('details.scenario').first().locator('details.usage');
   await first.locator('summary').click();
   await expect(first.locator('.usage-group').first()).toBeVisible();

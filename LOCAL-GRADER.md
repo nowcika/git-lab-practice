@@ -8,7 +8,7 @@ Node.js 20 이상과 Git이 필요합니다. 온라인 모드는 GitHub CLI(`gh`
 # 초급 과정: 8개 항목, 100점
 npm run grade:local -- --repo /path/to/student-repo --course basic --json /tmp/basic-result.json
 
-# 실전 과정: 18개 항목, 290점
+# 실전 과정: 20개 항목, 325점
 npm run grade:local -- --repo /path/to/student-fork --course scenarios --json /tmp/scenario-result.json
 
 # 네트워크 없이 로컬 결과만 검사
@@ -52,6 +52,6 @@ remote는 이름과 GitHub 저장소를 기록하고 reflog는 항목 수를 보
 ## 실제 검증 결과 (2026-09-16)
 
 - 임시 Git 저장소 테스트: 정상 100점, README 오답 85점, push 불일치, 다른 계정/소유자/PR, API 실패, 오프라인, shallow clone, 실제/가짜 revert, merge 여부, 주석 태그, 페이지네이션 및 CLI 보고서 검사.
-- 공식 정답 저장소를 임시 폴더에 clone하고 17개 solution 로컬 브랜치를 준비해 실제 인증 계정과 GitHub SHA 대조: **290/290점, 18개 통과**.
+- 공식 정답 저장소를 임시 폴더에 clone하고 solution 로컬 브랜치를 준비해 실제 인증 계정과 GitHub SHA 대조: **290/290점, 18개 통과** (2026-09-16 시나리오 2개 추가 후 325점 만점으로 재구성).
 - 2026-09-16 검토 수정 후 단위 테스트 19개 재통과(오프라인 종료 코드, 항목별 실패 사유, `--branch` 우선순위, `--repo` 필수화 포함).
 - 테스트는 GitHub 저장소를 생성·수정하거나 push하지 않습니다. 테스트용 로컬 저장소만 생성·수정합니다.
