@@ -22,3 +22,15 @@ Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안�
 공식 정답은 [`nowcika/git-scenario-solution`](https://github.com/nowcika/git-scenario-solution)에서 확인할 수 있습니다. 각 시나리오 카드의 **정답 결과 보기**는 해당 해결 브랜치, 자동 생성 Release 또는 실제 Pages 사이트로 직접 연결됩니다.
 
 데스크톱에서 Chromium UI 검증을 이어서 실행하려면 [DESKTOP-HANDOFF.md](DESKTOP-HANDOFF.md)를 따르세요. 정답 URL 입력부터 290점 확인과 결과 화면 캡처까지 자동화돼 있습니다.
+
+## 사용자 PC의 로컬 저장소 검증
+
+로컬 Git 파일·커밋 이력과 로그인한 GitHub 계정, 원격 브랜치 SHA를 함께 검사할 수 있습니다. 초급 100점과 실전 290점 과정을 지원합니다.
+
+```bash
+npm run grade:local -- --repo /path/to/student-repo --course basic
+npm run grade:local -- --repo /path/to/student-fork --course scenarios --json /tmp/scenario-result.json
+npm run test:local
+```
+
+설치 조건, 오프라인 검사, JSON 결과와 판정 한계는 [LOCAL-GRADER.md](LOCAL-GRADER.md)를 참고하세요.
