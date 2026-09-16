@@ -1,6 +1,69 @@
 {
   "schemaVersion": 1,
   "rulesVersion": "2026-09-public-v1",
-  "updatedAt": "2026-09-16T22:56:03.597Z",
-  "entries": []
+  "updatedAt": "2026-09-16T22:57:51.576Z",
+  "entries": [
+    {
+      "rulesVersion": "2026-09-public-v1",
+      "userId": 84158293,
+      "login": "nowcika",
+      "course": "basic",
+      "repository": "nowcika/git-lab-practice",
+      "score": 40,
+      "maxScore": 90,
+      "passed": 3,
+      "total": 7,
+      "checkedAt": "2026-09-16T22:57:35.516Z",
+      "issueNumber": 1,
+      "runId": 35160085405,
+      "assessment": {
+        "checkedAt": "2026-09-16T22:57:35.516Z",
+        "runId": 35160085405,
+        "checks": [
+          {
+            "name": "GitHub 계정",
+            "points": 10,
+            "state": "pass",
+            "detail": "공개 프로필 확인: @nowcika"
+          },
+          {
+            "name": "직접 만든 공개 저장소",
+            "points": 15,
+            "state": "pass",
+            "detail": "공개 저장소 확인: nowcika/git-lab-practice"
+          },
+          {
+            "name": "README와 지정 문구",
+            "points": 15,
+            "state": "fail",
+            "detail": "README.md에 git-lab-nowcika 문구를 추가하세요."
+          },
+          {
+            "name": "로컬에서 push한 커밋 2개",
+            "points": 15,
+            "state": "pass",
+            "detail": "로컬에서 push한 커밋 20개 확인 (서로 다른 내용)"
+          },
+          {
+            "name": "practice/feature 브랜치와 변경",
+            "points": 15,
+            "state": "fail",
+            "detail": "practice/feature 브랜치를 GitHub에 푸시하세요."
+          },
+          {
+            "name": "내가 만든 학습 계획 이슈",
+            "points": 10,
+            "state": "fail",
+            "detail": "제목에 ‘학습 계획’이 들어간 이슈를 만드세요."
+          },
+          {
+            "name": "내가 만든 practice/feature PR",
+            "points": 10,
+            "state": "fail",
+            "detail": "practice/feature에서 기본 브랜치로 PR을 만드세요."
+          }
+        ]
+      }
+    }
+  ]
 }
