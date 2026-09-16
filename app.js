@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const fields = ['gitVersion', 'username', 'repoUrl'];
+const guideIds = ['install', 'account', 'repo', 'readme', 'commits', 'branch', 'issue', 'pr'];
 const labels = [
   ['Git 설치 출력', 10], ['GitHub 계정', 10], ['공개 저장소', 15],
   ['README와 지정 문구', 15], ['기본 브랜치 커밋 2개', 15],
@@ -147,6 +148,18 @@ function render(report) {
     const body = document.createElement('div'); const name = document.createElement('strong');
     const detail = document.createElement('p'); name.textContent = result.name; detail.textContent = result.detail;
     body.append(name, detail);
+    if (result.state !== 'pass') {
+      const link = document.createElement('a'); link.className = 'result-guide';
+      link.href = guideIds[index].startsWith('install') || guideIds[index] === 'account' ? '#setup' : `#guide-${guideIds[index]}`;
+      link.textContent = guideIds[index] === 'install' || guideIds[index] === 'account' ? '준비 과정 확인 ↑' : '해결 가이드 보기 ↑';
+      link.addEventListener('click', (event) => {
+        if (guideIds[index] === 'install' || guideIds[index] === 'account') return;
+        event.preventDefault(); const guide = document.getElementById(`guide-${guideIds[index]}`);
+        guide.open = true; guide.scrollIntoView({ behavior:'smooth', block:'start' });
+        guide.classList.remove('flash'); requestAnimationFrame(() => guide.classList.add('flash'));
+      });
+      body.append(link);
+    }
     const points = document.createElement('b'); points.textContent = `${result.state === 'pass' ? result.points : 0} / ${result.points}점`;
     row.append(mark, body, points); return row;
   }));
