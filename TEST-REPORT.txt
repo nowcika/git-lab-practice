@@ -1,0 +1,223 @@
+================================================================================
+Git 실습실(git_lab_practice) 실제 동작 테스트 결과
+작성일: 2026-09-16 / 소스는 수정하지 않았습니다.
+================================================================================
+
+[테스트 환경]
+  OS        : Linux 7.0.0-31-generic
+  Node.js   : v24.11.0 / npm 11.13.0
+  Git       : 2.43.0
+  GitHub CLI: gh 2.45.0 (nowcika 계정으로 인증됨, scopes: gist read:org repo workflow)
+  Chromium  : node_modules/playwright-core/.local-browsers/chromium-1243 및
+              ~/.cache/ms-playwright/chromium-1243 양쪽 존재
+  네트워크  : api.github.com, github.io 접근 가능
+
+================================================================================
+1. 통과한 테스트
+================================================================================
+
+1-1. 로컬 검증기 단위 테스트  ( npm run test:local )
+     결과: 17개 전부 통과 (약 3.6초)
+       ✔ 초급 정상 100점 및 작업 트리/HEAD/index 보존
+       ✔ README만 틀리면 85점, 미커밋 정답은 불인정
+       ✔ push SHA가 다르면 브랜치 점수 차감
+       ✔ 계정/origin/소유자/공개 설정 불일치는 실패
+       ✔ API 오류는 확인 불가
+       ✔ 오프라인은 네트워크 없이 55점과 4개 확인 불가
+       ✔ 다른 Fork PR과 이슈로 위장한 PR은 불인정
+       ✔ 목록 페이지 순회 및 1,000개 초과 보류
+       ✔ shallow clone 이력은 확인 불가
+       ✔ 실제 revert 통과, 메시지만 흉내 낸 역 patch 불일치 실패
+       ✔ conflict 문구 복사만 실패, merge 이력 포함 통과
+       ✔ 주석 태그는 실제 커밋 SHA로 비교하고 전체 배점은 290점
+       ✔ 원본 Fork가 아니면 로컬 정답이 있어도 온라인 시나리오 실패
+       ✔ CLI JSON, 종료 코드, 기존 파일 덮어쓰기 방지
+       ✔ GitHub remote 형식 검사
+       ✔ 빈 커밋으로 수만 늘린 제출은 커밋 점수를 얻지 못한다
+       ✔ Pages의 서버 오류는 확인 불가, 정상 응답의 틀린 내용은 실패
+     평가: 테스트 설계가 꼼꼼합니다(위장 제출·부정행위 케이스까지 포함).
+
+1-2. GitHub 실데이터 API 테스트  ( npm run test:scenario )
+     결과: 9개 전부 통과 (15.0초)
+       ✔ 배포 사이트와 18개 시나리오
+       ✔ 원본 문제 브랜치 (scenario/* 18개 전부 존재)
+       ✔ remote conflict revert rebase
+       ✔ reset reflog amend cherry-pick
+       ✔ diff show patch blame
+       ✔ 브랜치 이동과 amend
+       ✔ Actions Release와 asset
+       ✔ Pages 실제 서비스
+       ✔ 완료 tag
+     즉, 문제 저장소/정답 저장소/Release/Pages는 현재 모두 정상 동작합니다.
+
+1-3. 외부 자원 접근성 직접 확인 (curl)
+     https://nowcika.github.io/git-lab-practice/            -> 200
+     https://nowcika.github.io/git-scenario-solution/       -> 200 (CORS: * 허용)
+     api.github.com/repos/nowcika/git-scenario-lab          -> 200
+     api.github.com/repos/nowcika/git-scenario-solution     -> 200
+     api.github.com/repos/nowcika/git-scenario-library      -> 200
+     api.github.com/repos/nowcika/git-lab-example           -> 200
+     .../releases/tag/release-v1.0.0                        -> 200
+     .../releases/tag/solution-v1.0.0                       -> 200
+     페이지가 참조하는 로컬 파일(assets 6개, js 3개, css 1개) 전부 존재.
+     index.html 중복 id 없음.
+
+1-4. 로컬 채점 CLI 실제 실행
+     (가) 임시 학습자 저장소(README 문구 + 커밋 2개 + practice/feature) 오프라인 채점
+          -> basic · local-only · 55/100점, 통과 4 / 실패 0 / 확인 불가 4, 종료 코드 2
+          (오프라인에서 확인 불가한 4개는 설계된 동작)
+     (나) 이 프로젝트 저장소를 제출물처럼 온라인 채점
+          -> basic · github-and-local · 50/100점, 종료 코드 1
+          GitHub 인증 계정/소유 저장소/기본 브랜치 SHA 대조까지 정상 동작 확인
+     (다) 잘못된 경로: `--repo /nonexistent`
+          -> "검증 실패: 작업 트리가 있는 Git 저장소 경로를 지정하세요." (정상 처리)
+     (라) 보고서 덮어쓰기 방지, --help, 잘못된 옵션 처리 모두 정상
+
+================================================================================
+2. 실행하지 못한 테스트
+================================================================================
+
+2-1. 브라우저 UI 테스트 ( tests/basic-ui.spec.js, tests/scenario-ui.spec.js )
+     상태: 사용자 요청으로 실행을 중단했습니다. 이번 세션에서는 미검증입니다.
+     참고: 두 파일 모두 로컬 파일이 아니라 배포 사이트를 대상으로 하며,
+           이번 검토에서 배포본과 로컬 파일이 동일함을 확인했으므로
+           현재 시점에는 같은 코드를 검사하게 됩니다.
+     재실행 방법:
+       export GH_TOKEN="$(gh auth token)"
+       PLAYWRIGHT_BROWSERS_PATH=0 npx playwright test tests/basic-ui.spec.js tests/scenario-ui.spec.js
+     주의: scenario-ui 테스트는 채점 버튼을 실제로 눌러 GitHub API를 35회
+           호출합니다. 토큰 없이 돌리면 API 한도 때문에 실패할 수 있습니다.
+
+================================================================================
+3. 테스트 중 확인된 "실제로 안 되는 것"
+================================================================================
+
+3-1. [치명] macOS 기본 Git 출력이 채점에서 실패
+     app.js:74 정규식에 실제 출력 문자열을 넣어 확인한 결과:
+       "git version 2.48.1"                 -> 통과
+       "git version 2.43.0"                 -> 통과
+       "git version 2.45.1.windows.1"       -> 통과
+       "git version 2.39.5 (Apple Git-154)" -> 실패  ← macOS 기본 설치
+     guides.js가 macOS에 xcode-select 설치를 안내하므로,
+     안내대로 한 macOS 학습자는 이 항목에서 항상 0점입니다.
+
+3-2. [치명] 미인증 GitHub API 한도를 초과함
+     실측한 요청 수:
+       시나리오 채점 1회 = api() 15회 + scenarioContent() 20회 = 35회
+                          (+ GitHub Pages 본문 fetch 1회)
+       초급 채점 1회     = 7회
+     이 PC에서 확인한 미인증 한도: core limit 60회/시간(IP 기준).
+     -> 한 사람이 두 번만 채점해도 한도에 근접하고, 같은 시간대 재시도는 403.
+     -> 공용 IP를 쓰는 교육장에서는 사실상 몇 명만 채점하면 전원이
+        "확인 불가"만 보게 됩니다.
+
+3-3. [치명] 정답 저장소 주소만 넣으면 290점
+     scenarios.js:259가 nowcika/git-scenario-solution 을 Fork 검사에서 예외 처리.
+     이 주소는 페이지의 "전체 정답 저장소 ↗" 버튼에 그대로 노출돼 있습니다.
+
+3-4. [치명] Git을 쓰지 않고도 시나리오 점수 획득 가능
+     검증 방법: git merge/rebase/cherry-pick/reflog를 전혀 쓰지 않고,
+     페이지에 적힌 정답 문구만 텍스트 파일로 만들어 커밋한 임시 저장소를 채점.
+     결과: scenarios · local-only · 75/290점
+           [pass] upstream 변경 15점
+           [pass] 복구 결과(reflog) 15점
+           [pass] diff 보고서 15점
+           [pass] show 보고서 15점
+           [pass] blame 보고서 15점
+     웹 채점도 동일 기준이므로 같은 결과가 나옵니다.
+
+3-5. [중요] Playwright 설정이 GitHub 토큰을 외부 도메인에도 전송
+     playwright.config.js가 use.extraHTTPHeaders에 Authorization을 넣는데,
+     이는 브라우저의 모든 요청에 적용됩니다.
+     styles.css:1이 fonts.googleapis.com을 @import 하므로 UI 테스트 중
+     Google 도메인으로도 토큰이 전송됩니다.
+
+3-6. [중요] 새로 clone하면 로컬 검증기가 동작하지 않음
+     bin/, lib/, LOCAL-GRADER.md, tests/local-grader.test.cjs,
+     tests/basic-ui.spec.js 가 커밋되지 않았고 origin/main에도 없습니다.
+     -> 원격에서 clone한 사람은 `npm run grade:local`, `npm run test:local`
+        실행 불가. `npm test`는 첫 단계에서 실패.
+     참고: 원격 package.json에는 test:local / grade:local 스크립트 자체가
+     아직 없습니다(로컬 package.json만 수정된 상태).
+
+3-7. [중요] 문서대로 설치하면 npm test가 브라우저를 못 찾음
+     DESKTOP-HANDOFF.md: `npx playwright install chromium`
+       -> ~/.cache/ms-playwright/chromium-1243/... 에 설치
+     package.json scripts: PLAYWRIGHT_BROWSERS_PATH=0
+       -> node_modules/playwright-core/.local-browsers/chromium-1243/... 를 탐색
+     두 경로가 다름을 직접 확인했습니다. 새 PC에서는 UI 테스트가 실패합니다.
+     (test:scenario는 브라우저를 띄우지 않아 영향 없음)
+
+3-8. [보통] --offline은 항상 종료 코드 2
+     오프라인에서는 4개 항목이 항상 "확인 불가"이므로 전부 통과해도 2입니다.
+     자동화(CI, 채점 스크립트)에서 성공/실패를 구분할 수 없습니다.
+
+3-9. [보통] --repo를 빼면 현재 폴더를 조용히 채점
+     인자 없이 `node bin/grade-local.js`를 실행하면 이 프로젝트 저장소 자체가
+     제출물로 채점되어 "50/100점"이 출력됩니다. 경고가 없습니다.
+
+3-10. [보통] 실패 사유 안내가 일반 문구뿐인 항목이 있음
+     온라인 채점 실행 결과 중:
+       [fail] 학습 계획 이슈: 0/10 — 조건 미충족: 파일·이력·소유자·push 상태의 근거를 확인하세요.
+       [fail] 해당 저장소의 feature PR: 0/10 — (같은 문구)
+     어떤 조건이 어긋났는지 알 수 없습니다.
+
+================================================================================
+4. 문제 없이 동작하는 것으로 확인된 부분
+================================================================================
+  - 초급 100점 / 시나리오 290점 배점 합계와 화면 표기가 정확히 일치
+  - 18개 시나리오 정의와 채점 task 수(1+17) 일치
+  - 로컬 검증기의 revert 진위 검사(patch-id 대조), merge 부모 검사,
+    빈 커밋 차단, shallow clone 보류, 태그 객체 추적 등은 실제로 동작
+  - 검사 중 HEAD/브랜치 변경 감지, 작업 트리·index 무변경 보장 동작
+  - 채점 도중 사용자 저장소를 수정하지 않음(테스트로 확인)
+  - GitHub Pages CORS 허용 확인 -> pages 채점 fetch는 정상
+  - 코드 블록의 <찾은-SHA> 같은 자리표시자는 HTML로 사라지지 않고 표시됨
+  - 배포본과 로컬 소스가 동일
+
+상세한 수정 권고는 CODE-REVIEW-ISSUES.txt 를 참고하세요.
+
+================================================================================
+5. 수정 후 재검증 (2026-09-16, 지적사항 반영 이후)
+================================================================================
+
+5-1. 로컬 검증기 단위 테스트  ( npm run test:local )
+     결과: 19개 전부 통과 (기존 17개 + 신규 2개)
+       + 신뢰할 수 없는 저장소는 항목별 사유를 남긴다
+       + --branch를 지정하면 GitHub 기본 브랜치보다 우선한다
+       (CLI 종료 코드 테스트는 오프라인 보류 항목 제외 규칙에 맞춰 갱신)
+
+5-2. Playwright 전체 ( npm test )
+     결과: 19개 전부 통과 — api 9개 + chromium 10개
+       [api] 배포 사이트와 실제 GitHub 데이터 9개 (기존과 동일)
+       [chromium] 로컬 소스 검사 10개
+         ✓ 잘못된 입력 차단과 입력값 복원
+         ✓ 저장소 URL 파싱이 경로와 자격 증명을 올바르게 처리한다   (C-3, B-7)
+         ✓ macOS와 Windows의 git --version 출력이 모두 통과한다     (A-1)
+         ✓ 명령어 활용 사례 블록이 모든 시나리오와 가이드에 있다     (신규 기능)
+         ✓ 코드 블록의 자리표시자가 사라지지 않는다                  (D-1)
+         ✓ 모바일 화면에서 메뉴와 가이드가 동작하고 가로 넘침이 없다
+         ✓ 공식 정답 저장소는 기본적으로 채점되지 않는다             (A-3)
+         ✓ 테스트 모드에서 공식 정답 저장소가 290점을 받는다         (A-4 강화 후에도 만점 유지)
+         ✓ 모든 시나리오의 가이드와 정답 링크
+         ✓ 설치 가입 및 초급 가이드
+
+5-3. 수정으로 해결된 "안 되던 것"
+     3-1 macOS git 버전  -> 정규식 완화, 전용 테스트로 고정
+     3-2 API 한도        -> 한도 사전 확인 + 캐시 + 순차 실행 + 선택 토큰 입력,
+                            채점 후 실제 사용 횟수 표시
+     3-3 정답 저장소 만점 -> 기본 차단(0점), ?allowAnswerRepo=1 테스트 모드만 예외
+     3-4 문구 복사 통과   -> upstream은 merge 커밋 필수,
+                            diff/show/blame은 지정된 제출 커밋 메시지 필수
+     3-5 토큰 전역 주입   -> api/chromium 프로젝트 분리, 브라우저 전역 헤더 제거
+     3-6 새 clone 미동작  -> bin/, lib/ 등 커밋·푸시 완료
+     3-7 브라우저 경로    -> 문서를 PLAYWRIGHT_BROWSERS_PATH=0 설치로 통일
+     3-8 오프라인 종료코드 -> offlineSkipped/blocked 구분, 전부 통과 시 0
+     3-9 --repo 생략      -> 필수화, 누락 시 오류로 중단
+     3-10 일반 실패 문구  -> 비공개/계정/소유자/origin/Fork 사유를 구분해 출력
+
+5-4. 회귀 방지 구조 변경
+     UI 테스트가 배포 사이트가 아니라 bin/static-server.js가 제공하는
+     로컬 소스를 검사하도록 바꿨습니다. 이제 푸시 전에 회귀를 잡을 수 있고,
+     배포 확인은 api 프로젝트(scenario-api.spec.js)가 담당합니다.
+================================================================================

@@ -1,0 +1,282 @@
+================================================================================
+[2026-09-16 수정 완료]  이 리포트의 지적사항은 모두 반영되었습니다.
+  - 수정 내역 요약: CHANGELOG.md
+  - 수정 후 테스트 결과: TEST-REPORT.txt "5. 수정 후 재검증" 절
+  - 아래 본문은 수정 전 진단 기록으로 그대로 보존합니다.
+  치명 A-1~A-4 / 중요 B-1~B-7 / 보통 C-1~C-13 : 전부 수정
+  D 항목(오탐 아님)은 수정 대상이 아니지만 D-1은 예방 차원에서 함께 처리했습니다.
+================================================================================
+
+================================================================================
+Git 실습실(git_lab_practice) 소스 검토 - 문제점 및 수정 권고
+작성일: 2026-09-16 / 검토 대상: 작업 폴더의 현재 파일 상태(수정 없이 분석만 수행)
+대상 파일: index.html, app.js, scenarios.js, guides.js, styles.css,
+          lib/local-grader.js, bin/grade-local.js, playwright.config.js,
+          package.json, tests/*, README.md, LOCAL-GRADER.md, DESKTOP-HANDOFF.md
+표기: [A] 치명  [B] 중요  [C] 보통  [D] 오탐 아님(확인 완료)
+※ "실측"으로 표시한 항목은 이번 검토에서 직접 실행해 확인한 결과입니다.
+================================================================================
+
+--------------------------------------------------------------------------------
+[A] 치명 - 학습자가 실제로 막히거나 채점을 신뢰할 수 없는 문제
+--------------------------------------------------------------------------------
+
+A-1. macOS 기본 Git 출력이 "Git 설치" 항목에서 무조건 실패 (10점 손실)
+  위치: app.js:74
+    /^git version \d+\.\d+(?:\.\d+)?(?:[\w.+-]*)$/i
+  문제: Apple Command Line Tools의 git은 다음과 같이 출력합니다.
+        git version 2.39.5 (Apple Git-154)
+        괄호 부분 때문에 정규식이 false를 반환합니다. (실측: false)
+        정작 guides.js의 macOS 안내는 `xcode-select --install`을 권장하므로,
+        안내대로 따라 한 macOS 학습자는 100% 이 항목에서 0점을 받습니다.
+  실측 결과:
+        "git version 2.48.1"                  -> true
+        "git version 2.45.1.windows.1"        -> true
+        "git version 2.39.5 (Apple Git-154)"  -> false   <-- 버그
+  권고: 뒤에 오는 괄호 주석을 허용하도록 완화.
+        예) /^git version \d+\.\d+(?:\.\d+)?[\w.+-]*(?:\s+\(.+\))?$/i
+        또는 로컬 검증기(lib/local-grader.js)처럼 /^git version /만 확인.
+
+A-2. GitHub API 미인증 요청 한도(60회/시간/IP)를 사실상 항상 초과
+  위치: app.js:34(api), scenarios.js gradeScenarios 전체
+  문제: 브라우저 채점은 토큰 없이 api.github.com을 호출하므로 한도가
+        IP당 60회/시간입니다. 그런데 요청 수가 다음과 같습니다. (실측 집계)
+          - 실전 시나리오 채점 1회: 35회 (api() 15회 + scenarioContent() 20회)
+                                   + GitHub Pages 본문 fetch 1회
+          - 초급 채점 1회:          7회
+        한 사람이 시나리오 1회 + 초급 1회만 눌러도 42/60을 소진하고,
+        같은 시간에 재시도하면 403입니다. 교실/학원처럼 여러 명이 같은
+        공인 IP를 쓰면 첫 두세 명 이후 전원이 "확인 불가"만 보게 됩니다.
+        (실측: 이 PC의 미인증 한도 core limit=60 확인)
+        게다가 Promise.all로 동시에 쏘기 때문에 한도를 넘는 순간 다수 항목이
+        한꺼번에 unknown으로 떨어집니다.
+  권고(우선순위 순):
+        1) 요청 수 축소: 브랜치별 contents를 개별 호출하는 대신
+           /git/trees/<branch>?recursive=1 1회로 파일 존재 여부를 판정하고,
+           필요한 파일만 blob으로 읽기. 또는 GraphQL 1회 질의로 통합.
+        2) 선택적 개인 액세스 토큰 입력란 제공(localStorage 보관, 전송은
+           api.github.com 한정, 화면에 마스킹). 한도가 5,000회/시간이 됩니다.
+        3) 403 발생 시 x-ratelimit-reset 값을 읽어 "N분 후 재시도" 안내.
+        4) 항목별 결과를 sessionStorage에 캐시해 재채점 시 중복 조회 방지.
+
+A-3. 공식 정답 저장소 URL만 입력하면 누구나 290점 만점
+  위치: scenarios.js:259 (officialAnswer 예외 분기)
+  문제: repo.full_name이 'nowcika/git-scenario-solution'이면 Fork 검사를
+        통째로 우회하고, 이후 모든 항목이 정답 저장소 내용으로 통과합니다.
+        즉 학습자가 주소창에
+          https://github.com/nowcika/git-scenario-solution
+        를 붙여넣기만 하면 290/290이 표시됩니다. 이 주소는 페이지의
+        "전체 정답 저장소 ↗", "정답 결과 보기 ↗" 버튼으로 이미 노출돼 있습니다.
+  권고: 이 예외는 Playwright UI 테스트(tests/scenario-ui.spec.js)를 위한
+        것으로 보이므로, 운영 코드에서 제거하고 테스트는
+        ?selfcheck=1 같은 쿼리스트링이나 별도 테스트 페이지에서만 허용.
+        최소한 점수 대신 "정답 저장소 참고 모드"로 표시해야 합니다.
+
+A-4. 채점 통과 문구가 페이지에 그대로 적혀 있어 Git 없이도 통과 가능
+  위치: scenarios.js 각 시나리오 checks/commands + 채점 로직
+  문제: UPSTREAM-SYNC-COMPLETE, DIFF-TARGET-2026, SHOW-EVIDENCE-4821,
+        BLAME-OWNER-7392, REFLOG-RECOVERED-COMMIT 등 판정 키워드가 화면에
+        그대로 노출되고, 해당 항목은 "파일에 그 문자열이 있는가"만 봅니다.
+  실측: git 명령(merge/rebase/cherry-pick/reflog)을 전혀 쓰지 않고 텍스트
+        파일만 만들어 커밋한 임시 저장소로 로컬 검증기를 돌린 결과
+          scenarios · local-only · 75/290점
+          [pass] upstream 변경 15 / 복구 결과 15 / diff 보고서 15
+          [pass] show 보고서 15 / blame 보고서 15
+        웹 채점도 같은 기준이므로 동일하게 통과합니다.
+  권고: 내용 일치 외에 이력 근거를 함께 요구.
+        - upstream: merge 커밋 부모 2개 + upstream 브랜치 커밋 SHA가
+          조상으로 포함되는지 확인
+        - reflog: 복구 커밋이 원본과 patch-id가 같은지 확인
+        - diff/show/blame: 보고서 내용 대신 원본 브랜치 SHA를 문제로 제시하고
+          제출물이 그 SHA를 참조하는지 대조
+        (lib/local-grader.js의 revertEvidence()가 이미 좋은 선례입니다)
+
+--------------------------------------------------------------------------------
+[B] 중요 - 보안, 배포, 회귀 방지
+--------------------------------------------------------------------------------
+
+B-1. Playwright 설정이 GitHub 토큰을 브라우저의 모든 요청에 붙임 (토큰 유출 경로)
+  위치: playwright.config.js:3-7 (use.extraHTTPHeaders에 Authorization 주입)
+  문제: extraHTTPHeaders는 API 요청뿐 아니라 브라우저 컨텍스트가 보내는
+        모든 요청에 적용됩니다. 그런데 styles.css:1 에
+          @import url('https://fonts.googleapis.com/css2?...')
+        가 있어 UI 테스트 중 fonts.googleapis.com / fonts.gstatic.com 으로도
+        `Authorization: Bearer gho_...` 가 전송됩니다.
+        gh 토큰 스코프에 repo, workflow가 포함돼 있어 영향이 작지 않습니다.
+  권고: 헤더 주입을 API 전용 프로젝트에만 적용하고(projects 분리),
+        UI 테스트는 tests/scenario-ui.spec.js가 이미 쓰는 방식대로
+        page.route('https://api.github.com/**') 에서만 헤더를 추가.
+
+B-2. 로컬 검증기 일체가 커밋/푸시되지 않은 상태
+  실측: git status 기준 untracked -
+        bin/, lib/, LOCAL-GRADER.md, tests/basic-ui.spec.js,
+        tests/local-grader.test.cjs
+        origin/main 트리에도 존재하지 않음(확인함).
+  영향: GitHub에서 새로 clone하면
+        - `npm run grade:local` : bin/grade-local.js 없음 -> 실행 불가
+        - `npm test`            : test:local이 없는 파일을 가리켜 실패
+        README.md와 LOCAL-GRADER.md는 이미 이 기능을 설명하고 있어
+        문서와 저장소 내용이 어긋납니다.
+  권고: 커밋/푸시하거나, 아직 공개 전이라면 README에서 해당 절을 분리.
+
+B-3. 브라우저 설치 경로 안내와 npm 스크립트가 불일치
+  위치: package.json scripts, DESKTOP-HANDOFF.md
+  문제: 스크립트는 PLAYWRIGHT_BROWSERS_PATH=0 을 강제하는데(= node_modules
+        안에서 브라우저를 찾음), 인계 문서는 `npx playwright install chromium`
+        (= ~/.cache/ms-playwright에 설치)을 안내합니다.
+  실측: PLAYWRIGHT_BROWSERS_PATH=0 -> node_modules/playwright-core/.local-browsers/chromium-1243/...
+        환경변수 없음         -> /home/<user>/.cache/ms-playwright/chromium-1243/...
+        즉 문서대로 설치한 새 PC에서 `npm test`는 브라우저를 못 찾습니다.
+        (test:scenario는 브라우저를 띄우지 않아 우연히 동작합니다)
+  권고: 문서를 `PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium`
+        으로 맞추거나, 스크립트에서 환경변수를 빼고 Termux 전용 스크립트만
+        따로 두기. 또한 test:ui만 환경변수가 빠져 있어 일관성이 없습니다.
+
+B-4. 모든 테스트가 "배포된 사이트"만 검증 - 로컬 수정본 회귀 테스트 불가
+  위치: tests/basic-ui.spec.js:2, tests/scenario-ui.spec.js, tests/scenario-api.spec.js:8
+  문제: 세 파일 모두 https://nowcika.github.io/git-lab-practice/ 를 대상으로
+        합니다. 코드를 고쳐도 푸시 + Pages 배포 전에는 테스트가 옛 코드를
+        검사하므로, 버그를 넣고도 초록불이 뜹니다.
+        (실측: 현재는 배포본과 로컬 index.html/app.js/scenarios.js/
+         guides.js/styles.css가 바이트 단위로 동일해 우연히 문제가 없음)
+  권고: playwright.config.js에 webServer(예: python -m http.server / http-server)
+        와 baseURL을 추가해 UI 테스트는 로컬 파일을 검사하고,
+        배포 확인은 별도 smoke 프로젝트로 분리.
+
+B-5. 스크립트 간 전역 변수 결합이 깨지기 쉬움
+  위치: index.html 하단 3개 <script defer>, app.js 1-20행, scenarios.js 전역 참조
+  문제: scenarios.js가 app.js의 전역 api/assess/passed/failed/unknown/parseRepo에
+        의존합니다. 그런데 app.js는 상단에서
+          for (const id of fields) { $(id).value = ... }
+        를 무조건 실행하므로 #gitVersion/#username/#repoUrl 중 하나만 없어도
+        TypeError로 중단되고, 그 뒤 scenarios.js는 ReferenceError로
+        시나리오 영역 전체가 렌더링되지 않습니다.
+  권고: type="module" + export/import로 전환하거나, 최소한 요소 존재 확인 후
+        접근하고 공용 함수는 별도 파일(shared.js)로 분리.
+
+B-6. 채점 버튼 비활성 해제가 예외 경로에서 누락
+  위치: app.js grade() 마지막 button.disabled = false,
+        scenarios.js gradeScenarios() 마지막 button.disabled=false
+  문제: assess()가 잡지 못하는 예외(render 내부 DOM 오류 등)가 나면
+        버튼이 영구히 비활성 상태로 남아 새로고침 외에는 복구 불가.
+  권고: try / finally로 감싸기.
+
+B-7. 웹 채점 기준과 로컬 검증기 기준이 서로 다름
+  (같은 제출물이 웹 100점 / 로컬 85점처럼 갈릴 수 있음)
+  - 커밋 2개: 웹은 개수만 확인(app.js:104, per_page=2, length>=2) ->
+    `git commit --allow-empty`로도 통과.
+    로컬은 distinctTrees>=2까지 확인해 빈 커밋을 걸러냄(테스트로 보장됨).
+  - git --version: 웹은 엄격(A-1), 로컬은 /^git version / 만 확인.
+  - URL 파싱: 웹 parseRepo는 https://user:pass@github.com/owner/repo 를 허용,
+    로컬 parseGitHub는 거부(테스트가 명시적으로 거부를 기대). (실측)
+  권고: 판정 규칙을 한 곳(JSON 스펙 또는 공용 모듈)에 정의하고 양쪽이
+        같은 규칙을 읽도록 하거나, 최소한 차이를 문서에 명시.
+
+--------------------------------------------------------------------------------
+[C] 보통 - UX, 정확성, 유지보수
+--------------------------------------------------------------------------------
+
+C-1. 채점 성공 시 안내 문구가 사라짐
+     app.js 끝부분에서 unknown이 없으면 status.textContent = '' 로 비웁니다.
+     "채점 완료" 같은 확인 메시지가 없어 눌렸는지 알기 어렵습니다.
+
+C-2. 네트워크 오류 메시지가 영어 원문으로 노출
+     fetch 실패 시 assess()가 error.message("Failed to fetch")를 그대로
+     화면에 표시합니다. 한국어 안내로 치환 권장.
+
+C-3. 저장소 URL에 경로가 붙으면 무조건 거부
+     parseRepo는 path 세그먼트가 정확히 2개일 때만 통과하므로
+     .../owner/repo/tree/main 을 복사해 온 학습자는 매번 거부됩니다.
+     가이드에 설명은 있으나, 앞 2개만 취해 자동 정규화하는 편이 친절합니다.
+
+C-4. 이슈/PR 조회 상한이 웹과 로컬에서 다름
+     웹은 per_page=100 1페이지만 확인(초과 시 조용히 실패 처리),
+     로컬은 최대 10페이지 순회 후 1,000개 초과면 unknown 보류.
+     기존 저장소로 제출하는 학습자에게 웹 채점이 불리합니다.
+
+C-5. 대용량/특수 README 오판
+     GitHub contents API는 1MB 초과 파일에서 content를 비워 보냅니다.
+     이때 웹 채점은 "README.md를 추가하세요"로 잘못 안내합니다.
+     (심볼릭 링크, submodule도 동일)
+
+C-6. bin/grade-local.js에서 --repo 생략 시 현재 폴더를 조용히 채점
+     위치: lib/local-grader.js:122  `new Repository(options.repo || '.')`
+     실측: 인자 없이 실행하면 이 프로젝트 저장소 자체가 채점되고
+           "basic · github-and-land · 50/100점"이 출력됩니다.
+     권고: --repo를 필수로 하거나, 기본값 사용 시 대상 경로를 경고 출력.
+
+C-7. --offline은 종료 코드가 항상 2
+     오프라인에서는 계정/저장소/이슈/PR 4개가 항상 unknown이므로
+     `summary.unknown ? 2 : ...` 규칙상 전부 통과해도 2입니다. (실측)
+     CI에서 "오프라인 통과"를 판정할 수 없습니다.
+     권고: 오프라인 모드는 별도 종료 코드나 --allow-unknown 옵션 제공.
+
+C-8. 실패 사유가 일반 문구로만 표시되는 경우가 많음
+     lib/local-grader.js의 sync()는 trustedRepository()가 false면
+     evidence.reason 없이 false를 반환해, 결과가
+     "조건 미충족: 파일·이력·소유자·push 상태의 근거를 확인하세요."
+     로만 찍힙니다. (실측: 이슈/PR 항목에서 확인)
+     권고: 항목별 사유 문자열 지정.
+
+C-9. --branch 옵션이 온라인 모드에서 항상 무시됨
+     위치: lib/local-grader.js:190
+       metadata?.default_branch || options.branch || 'main'
+     GitHub 메타데이터가 있으면 사용자가 지정한 --branch는 무시됩니다.
+     문서에는 "온라인은 GitHub 기본 브랜치 사용"이라 적혀 있으나,
+     명시적 옵션이 조용히 무시되는 동작은 혼란을 줍니다.
+
+C-10. 접근성
+     - 본문 글자가 8~10px인 곳이 다수: .scenario summary div small(8px),
+       .scenario-copy(8px), .scenario-doc(9px), .callout-list span(10px).
+       교육용 사이트로는 너무 작습니다(권장 12px 이상).
+     - color-scheme:dark 고정이라 라이트 모드/고대비 사용자 배려 없음.
+     - html{scroll-behavior:smooth} 고정, prefers-reduced-motion 미대응.
+     - .scenario-copy / .copy-block 버튼에 aria-label 없음
+       (index.html의 .copy 버튼에는 있어 일관성도 깨짐).
+
+C-11. 웹폰트 @import가 렌더링을 차단
+     styles.css:1의 @import는 CSS 파싱 후 추가 왕복이 생겨 표시가 늦습니다.
+     폐쇄망/오프라인 교육장에서는 폰트가 깨집니다.
+     권고: index.html에 <link rel="preconnect"> + <link rel="stylesheet">,
+           그리고 시스템 폰트 폴백 유지.
+
+C-12. package.json 정리
+     - "name": "git_test" 가 저장소명(git-lab-practice)과 불일치.
+     - "main": "app.js" 는 브라우저 전용 코드라 require 시 동작 불가.
+     - "engines" 미지정. 코드가 Node 20+ 기능(AbortSignal.timeout, node --test,
+       ||= 등)을 쓰므로 명시 권장.
+     - "test"가 UI 테스트까지 포함해 브라우저 없는 환경에서 실패.
+
+C-13. 평가 항목 수 표기가 혼동을 줌
+     상단 통계 "08 평가 항목", 실습 섹션 "8개 평가 항목"인데 화면의 미션
+     카드는 6개입니다(설치·가입 2개 포함이라는 설명이 없음).
+     카드 배점 합계는 80점, 전체 100점.
+
+--------------------------------------------------------------------------------
+[D] 의심했으나 문제가 아니었던 항목 (재검토 방지용 기록)
+--------------------------------------------------------------------------------
+D-1. scenarios.js 코드 블록의 <찾은-SHA>, <긴급수정-SHA> 는 innerHTML로 들어가도
+     '<' 다음이 비ASCII 문자라 HTML 태그로 해석되지 않고 그대로 표시됩니다.
+     코드 블록 안에 HTML로 파싱될 태그는 0건으로 확인했습니다. (실측)
+     다만 향후 <branch> 같은 영문 자리표시자를 추가하면 사라지므로,
+     코드 블록은 textContent로 넣는 편이 안전합니다.
+D-2. GitHub Pages 채점의 cross-origin fetch는 문제 없습니다.
+     https://nowcika.github.io 응답에 access-control-allow-origin: * 확인. (실측)
+D-3. "정답 결과 보기" 링크 전수 확인: release-v1.0.0, solution-v1.0.0 모두 HTTP 200.
+D-4. 배점 합계 정합성: 초급 8항목 100점, 시나리오 18항목 290점으로 일치.
+     index.html의 "18개 평가 항목 · 290점" 표기와도 일치. (실측)
+D-5. index.html 중복 id 없음. 참조하는 로컬 파일(assets/*, *.js, *.css) 모두 존재.
+D-6. 배포본과 로컬 파일이 동일(index.html/app.js/scenarios.js/guides.js/styles.css).
+
+--------------------------------------------------------------------------------
+권장 수정 순서
+--------------------------------------------------------------------------------
+1. A-1 (macOS 정규식)        - 한 줄 수정, 즉시 효과
+2. A-3 (정답 저장소 만점)     - 분기 제거, 즉시 효과
+3. B-1 (토큰 전역 주입)       - 보안
+4. A-2 (API 호출 수/한도)     - 설계 변경 필요, 교실 운영의 핵심
+5. B-2 / B-3 (커밋 누락, 브라우저 경로) - 배포 일관성
+6. B-4 (로컬 서버 기반 테스트) - 이후 수정의 회귀 방지 기반
+7. A-4 (정답 문구 노출)       - 채점 신뢰도
+8. 나머지 B/C 항목
+================================================================================
