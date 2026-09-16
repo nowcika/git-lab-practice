@@ -69,7 +69,7 @@ test('코드 블록의 자리표시자가 사라지지 않는다', async ({ page
   await page.goto('/#scenarios');
   const reflog = page.locator('#scenario-reflog');
   await reflog.locator('summary').first().click();
-  await expect(reflog.locator('pre code')).toContainText('git cherry-pick <찾은-SHA>');
+  await expect(reflog.locator('pre code')).toContainText('git cherry-pick -x <찾은-SHA>');
 });
 
 test('모바일 화면에서 메뉴와 가이드가 동작하고 가로 넘침이 없다', async ({ page }) => {

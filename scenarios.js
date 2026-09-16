@@ -197,8 +197,12 @@ git commit -m "docs: add recoverable note"
 git reset --hard HEAD~1
 git reflog
 # reflog에서 'docs: add recoverable note'의 SHA를 복사합니다.
-git cherry-pick <찾은-SHA>
-git push -u origin solution/reflog`, checks:['reset 직후 recovered-note.txt가 사라졌는가?', '`git reflog`에 잃어버린 커밋 메시지가 보이는가?', '해당 SHA를 cherry-pick한 뒤 파일이 복구됐는가?', 'reflog는 로컬 저장소 기록이므로 다른 PC나 GitHub에서 대신 볼 수 없다는 점을 이해했는가?'], verify:'복구된 고유 문구와 복구 커밋 메시지를 검사합니다.',
+# -x를 붙이면 "(cherry picked from commit ...)" 줄이 메시지에 남아
+# 어떤 커밋을 되살렸는지 기록으로 증명할 수 있습니다.
+git cherry-pick -x <찾은-SHA>
+
+git log -1            # 출처 줄이 들어갔는지 확인
+git push -u origin solution/reflog`, checks:['reset 직후 recovered-note.txt가 사라졌는가?', '`git reflog`에 잃어버린 커밋 메시지가 보이는가?', '`-x`를 붙여 cherry-pick했고 메시지에 출처 줄이 남았는가?', '출처 줄의 SHA가 reset으로 잃어버린 그 커밋인가?', 'reflog는 로컬 저장소 기록이므로 다른 PC나 GitHub에서 대신 볼 수 없다는 점을 이해했는가?'], verify:'복구된 파일과 커밋 메시지에 더해, `cherry-pick -x`가 남긴 “(cherry picked from commit …)” 출처 줄과 그 SHA가 복구 커밋 자신과 다른지 확인합니다. 로컬 검증기는 잃어버린 커밋이 실제로 브랜치에서 떨어져 나갔는지와 patch-id 일치까지 대조합니다.',
     usage:[
       ['git reflog', [
         ['git reflog', 'HEAD가 지나온 모든 위치를 시간순으로 봅니다. 잃어버린 커밋을 찾는 첫 명령입니다.'],
@@ -208,7 +212,8 @@ git push -u origin solution/reflog`, checks:['reset 직후 recovered-note.txt가
         ['HEAD@{5} / HEAD@{2.hours.ago}', 'reflog 위치는 이런 표기로 바로 참조할 수 있습니다.']
       ]],
       ['복구 방법 고르기', [
-        ['git cherry-pick <SHA>', '잃어버린 커밋 하나를 현재 브랜치에 다시 올립니다.'],
+        ['git cherry-pick -x <SHA>', '잃어버린 커밋을 되살리면서 "(cherry picked from commit ...)" 출처 줄을 남깁니다. 이 과제가 요구하는 형태입니다.'],
+        ['git cherry-pick <SHA>', '출처 줄 없이 커밋만 복제합니다.'],
         ['git reset --hard <SHA>', '브랜치 전체를 그 시점으로 되돌립니다.'],
         ['git branch rescue <SHA>', '잃어버린 커밋에 이름을 붙여 안전하게 보관합니다.'],
         ['git fsck --lost-found', 'reflog에도 없는 고아 커밋을 찾습니다. 최후의 수단입니다.'],
@@ -728,7 +733,17 @@ async function gradeScenarios() {
       async()=>{ const secret=await api(`${base}/contents/secrets.env?ref=${encodeURIComponent('solution/revert')}`); const config=await scenarioContent(base,'app.conf','solution/revert'); const commits=await scenarioCommits(base,'solution/revert',20); return secret.missing&&config?.includes('production=true')&&hasMessage(commits,/^Revert /i)?passed('잘못된 파일 제거와 Revert 이력 확인'):failed('secrets.env는 없어야 하고 app.conf와 Revert 커밋은 남아야 합니다.'); },
       async()=>{ const baseFile=await scenarioContent(base,'notes/base-update.txt','solution/rebase'); const topicFile=await scenarioContent(base,'notes/topic.txt','solution/rebase'); const commits=await scenarioCommits(base,'solution/rebase',20); return baseFile&&topicFile&&isLinear(commits)&&hasMessage(commits,/notification topic note/)&&hasMessage(commits,/common deployment rule/)?passed('기준·토픽 변경과 선형 이력 확인'):failed('두 결과 파일과 두 커밋이 merge 없이 선형 이력에 있어야 합니다.'); },
       async()=>{ const stable=await scenarioContent(base,'stable-config.txt','solution/reset'); const unwanted=await api(`${base}/contents/unwanted-experiment.txt?ref=${encodeURIComponent('solution/reset')}`); const commits=await scenarioCommits(base,'solution/reset',10); return stable?.includes('STABLE-CONFIG-V1')&&unwanted.missing&&/stable configuration/.test(tipMessage(commits))?passed('hard reset 후 안정 커밋 상태 확인'):failed('stable-config.txt만 남고 해결 브랜치 끝이 안정 커밋이어야 합니다.'); },
-      async()=>{ const recovered=await scenarioContent(base,'recovered-note.txt','solution/reflog'); const commits=await scenarioCommits(base,'solution/reflog',10); return recovered?.includes('REFLOG-RECOVERED-COMMIT')&&hasMessage(commits,/add recoverable note/)?passed('reflog로 복구한 파일과 커밋 확인'):failed('recovered-note.txt의 고유 문구와 복구 커밋을 확인하세요.'); },
+      async()=>{
+        const recovered=await scenarioContent(base,'recovered-note.txt','solution/reflog');
+        if(!recovered?.includes('REFLOG-RECOVERED-COMMIT')) return failed('solution/reflog의 recovered-note.txt에서 고유 문구를 찾지 못했습니다.');
+        const commits=await scenarioCommits(base,'solution/reflog',10);
+        const restored=commitList(commits).find(c=>/add recoverable note/.test(c.commit?.message||''));
+        if(!restored) return failed('"docs: add recoverable note" 커밋을 찾지 못했습니다.');
+        // cherry-pick -x가 남기는 출처 줄로 "되살린 커밋"임을 확인합니다.
+        const origin=(restored.commit?.message||'').match(/\(cherry picked from commit ([0-9a-f]{7,40})\)/i);
+        if(!origin) return failed('복구 커밋에 출처 줄이 없습니다. git cherry-pick -x <잃어버린-SHA> 로 되살리세요.');
+        if(restored.sha.startsWith(origin[1])) return failed('출처 줄이 복구 커밋 자신을 가리킵니다. reflog에서 찾은 잃어버린 커밋의 SHA를 사용하세요.');
+        return passed(`reflog로 되살린 커밋 확인 (출처 ${origin[1].slice(0,7)} → ${restored.sha.slice(0,7)})`); },
       async()=>{ const note=await scenarioContent(base,'release-note.md','solution/amend'); const commits=await scenarioCommits(base,'solution/amend',10); const messages=commitList(commits).map(c=>c.commit?.message||''); return note?.includes('# Release Note')&&note?.includes('Version: draft')&&messages[0]==='docs: add release note'&&!messages.some(m=>/releas note/.test(m))?passed('amend된 파일과 최신 커밋 메시지 확인'):failed('파일의 두 오타와 최신 메시지를 amend로 바로잡으세요.'); },
       async()=>{ const fix=await scenarioContent(base,'urgent-fix.txt','solution/cherry-pick'); const commits=await scenarioCommits(base,'solution/cherry-pick',10); return fix?.includes('CHERRY-PICK-HOTFIX-2026')&&hasMessage(commits,/urgent standalone hotfix/)&&isLinear(commits)?passed('선택한 긴급 수정 커밋 확인'):failed('긴급 수정 커밋만 cherry-pick하고 해결 브랜치를 push하세요.'); },
       async()=>{

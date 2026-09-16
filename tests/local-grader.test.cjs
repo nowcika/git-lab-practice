@@ -225,6 +225,51 @@ test('Pages는 브랜치 배포와 Actions 배포를 모두 인정한다', async
   assert.equal(item(r, 'pages').evidence.deployment, 'actions');
 });
 
+test('reflog 복구는 cherry-pick -x 출처와 고아 커밋 대조를 요구한다', async t => {
+  const options = { course: 'scenarios', offline: true };
+  // 실제 절차: 커밋 → reset --hard → cherry-pick -x
+  const good = fixture(t);
+  good.write('reflog-base.txt', 'base'); good.commit('docs: prepare reflog exercise');
+  good.write('recovered-note.txt', 'REFLOG-RECOVERED-COMMIT\n'); good.commit('docs: add recoverable note');
+  const lost = good.git('rev-parse', 'HEAD');
+  good.git('reset', '--hard', 'HEAD~1');
+  good.git('-c', 'commit.gpgsign=false', 'cherry-pick', '-x', lost);
+  good.git('branch', 'solution/reflog');
+  let r = await grade({ ...good.options, ...options });
+  assert.equal(item(r, 'reflog').state, 'pass');
+  assert.equal(item(r, 'reflog').evidence.recovery.origin, lost);
+  assert.notEqual(item(r, 'reflog').evidence.recovery.restored, lost);
+  assert.equal(r.diagnostics.find(d => d.id === 'reflog').cherryPick, true);
+
+  // 그냥 한 번 커밋만 하면 출처 줄이 없어 실패합니다.
+  const naive = fixture(t);
+  naive.write('recovered-note.txt', 'REFLOG-RECOVERED-COMMIT\n'); naive.commit('docs: add recoverable note');
+  naive.git('branch', 'solution/reflog');
+  r = await grade({ ...naive.options, ...options });
+  assert.equal(item(r, 'reflog').state, 'fail');
+  assert.match(item(r, 'reflog').detail, /출처 줄이 없습니다/);
+
+  // 아직 이력에 남아 있는 커밋을 출처로 적으면 실패합니다.
+  const ancestor = fixture(t);
+  ancestor.write('reflog-base.txt', 'base');
+  const kept = ancestor.commit('docs: prepare reflog exercise');
+  ancestor.write('recovered-note.txt', 'REFLOG-RECOVERED-COMMIT\n'); ancestor.git('add', '.');
+  ancestor.git('-c', 'commit.gpgsign=false', 'commit', '-m', `docs: add recoverable note\n\n(cherry picked from commit ${kept})`);
+  ancestor.git('branch', 'solution/reflog');
+  r = await grade({ ...ancestor.options, ...options });
+  assert.equal(item(r, 'reflog').state, 'fail');
+  assert.match(item(r, 'reflog').detail, /아직 브랜치 이력에 남아 있습니다/);
+
+  // 원본 커밋이 없는 저장소(다른 PC에서 clone)는 오답이 아니라 판정 보류입니다.
+  const cloned = fixture(t);
+  cloned.write('recovered-note.txt', 'REFLOG-RECOVERED-COMMIT\n'); cloned.git('add', '.');
+  cloned.git('-c', 'commit.gpgsign=false', 'commit', '-m', `docs: add recoverable note\n\n(cherry picked from commit ${'a'.repeat(40)})`);
+  cloned.git('branch', 'solution/reflog');
+  r = await grade({ ...cloned.options, ...options });
+  assert.equal(item(r, 'reflog').state, 'unknown');
+  assert.match(item(r, 'reflog').detail, /실제로 작업한 PC/);
+});
+
 test('CLI JSON, 종료 코드, 기존 파일 덮어쓰기 방지', t => {
   const f = fixture(t); const output = path.join(f.dir, 'result.json'); const cli = path.resolve(__dirname, '../bin/grade-local.js');
   const args = [cli, '--repo', f.dir, '--username', 'student', '--offline', '--json', output];
