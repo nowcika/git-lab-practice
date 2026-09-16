@@ -171,3 +171,31 @@ test('초급 채점은 병합된 PR의 현재 브랜치 SHA와 실제 커밋을 
   await expect(page.locator('#resultList .result-mark.fail')).toHaveCount(1);
   await expect(page.locator('#scoreRingText')).toHaveText('85%');
 });
+
+test('공개 순위표 서버 검증이 읽는 채점 결과 계약이 유지된다', async ({ page }) => {
+  // lib/leaderboard-grader.js가 window.lastBasicReport / window.lastScenarioReport를 읽습니다.
+  // 이름이나 형태가 바뀌면 Actions에서만 조용히 깨지므로 여기서 계약을 고정합니다.
+  await page.goto('/');
+  const shape = await page.evaluate(() => {
+    const report = { score: 12, results: [{ name: 'x', points: 12, state: 'pass', detail: 'ok' }] };
+    render({ ...report, checkedAt: '방금', results: report.results });
+    return { keys: Object.keys(window.lastBasicReport || {}), first: window.lastBasicReport?.results?.[0] };
+  });
+  expect(shape.keys).toEqual(expect.arrayContaining(['score', 'results']));
+  expect(shape.first).toMatchObject({ name: 'x', points: 12, state: 'pass', detail: 'ok' });
+
+  const scenario = await page.evaluate(() => {
+    renderScenarioResults(scenarioDefinitions.map(() => ({ state: 'fail', detail: '미통과' })), 0);
+    const results = window.lastScenarioReport?.results || [];
+    return {
+      count: results.length,
+      totalPoints: results.reduce((sum, r) => sum + r.points, 0),
+      sample: results[0] && { name: results[0].name, points: results[0].points, state: results[0].state, hasDetail: typeof results[0].detail === 'string' },
+    };
+  });
+  expect(scenario.count).toBe(20);
+  expect(scenario.totalPoints).toBe(325);
+  expect(scenario.sample).toMatchObject({ state: 'fail', hasDetail: true });
+  expect(scenario.sample.points).toBeGreaterThan(0);
+  expect(scenario.sample.name.length).toBeGreaterThan(0);
+});

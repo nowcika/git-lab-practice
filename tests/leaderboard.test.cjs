@@ -119,3 +119,31 @@ test('삭제 요청 작성자 본인의 해당 과정만 삭제하고 충돌 시
   assert.equal((await deleteRecord(client, { deletion })).changed, false);
   assert.throws(() => parseDeletion({ ...requestIssue, state: 'closed' }));
 });
+
+test('이 프로젝트가 운영하는 저장소는 순위에 등록하지 않는다', () => {
+  const { parseIssue, BLOCKED_REPOSITORIES, PLATFORM } = require('../lib/leaderboard-service');
+  // 순위표 자신과 문제·외부 자료·정답·예제 저장소가 모두 포함되어야 합니다.
+  for (const name of [PLATFORM, 'nowcika/git-scenario-lab', 'nowcika/git-scenario-library',
+    'nowcika/git-scenario-solution', 'nowcika/git-lab-example']) {
+    assert.equal(BLOCKED_REPOSITORIES.has(name), true, name);
+    const issue = {
+      number: 7, state: 'open', title: '[Leaderboard] basic',
+      user: { id: 84158293, login: name.split('/')[0], type: 'User' },
+      body: `### Course\n\nbasic\n\n### Repository\n\nhttps://github.com/${name}\n`,
+    };
+    assert.throws(() => parseIssue(issue), /공식 운영 저장소/, name);
+  }
+  // 대소문자가 달라도 막습니다.
+  assert.throws(() => parseIssue({
+    number: 8, state: 'open', title: '[Leaderboard] basic',
+    user: { id: 1, login: 'NowCika', type: 'User' },
+    body: '### Course\n\nbasic\n\n### Repository\n\nhttps://github.com/NowCika/Git-Lab-Practice\n',
+  }), /공식 운영 저장소/);
+  // 일반 참가자 저장소는 통과합니다.
+  const ok = parseIssue({
+    number: 9, state: 'open', title: '[Leaderboard] basic',
+    user: { id: 42, login: 'student', type: 'User' },
+    body: '### Course\n\nbasic\n\n### Repository\n\nhttps://github.com/student/my-lab\n',
+  });
+  assert.equal(ok.repository, 'student/my-lab');
+});

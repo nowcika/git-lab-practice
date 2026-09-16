@@ -280,6 +280,8 @@ async function grade() {
 }
 
 function render(report) {
+  // 공개 순위표의 서버 검증이 읽는 결과 계약입니다(tests/basic-ui.spec.js가 지킵니다).
+  window.lastBasicReport = report;
   $('scoreValue').innerHTML = `${report.score}<span>/ 100</span>`;
   $('scoreMessage').textContent = report.score === 100 ? '모든 실습 목표를 달성했습니다.' : '아래 항목을 확인하고 다시 도전해 보세요.';
   $('scoreRing').style.background = `conic-gradient(var(--purple) ${report.score}%, #35435b ${report.score}%)`;

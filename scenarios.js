@@ -1000,6 +1000,9 @@ async function gradeScenarios() {
 }
 
 function renderScenarioResults(checks,score){
+  // 공개 순위표의 서버 검증(lib/leaderboard-grader.js)이 읽는 결과 계약입니다.
+  // 이름이나 형태를 바꾸면 tests/basic-ui.spec.js의 계약 테스트가 실패합니다.
+  window.lastScenarioReport={score,results:checks.map((result,index)=>({...result,name:scenarioDefinitions[index].title,points:scenarioDefinitions[index].points}))};
   document.getElementById('scenarioScore').textContent=score;
   document.getElementById('scenarioScoreMessage').textContent=score===325?'모든 실전 시나리오를 해결했습니다.':'실패 항목의 가이드를 열어 결과를 다시 확인하세요.';
   const list=document.getElementById('scenarioResultList');
