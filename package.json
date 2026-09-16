@@ -5,7 +5,10 @@
   "main": "app.js",
   "scripts": {
     "test": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test",
-    "test:scenario": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test tests/scenario-api.spec.js"
+    "test:scenario": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test tests/scenario-api.spec.js",
+    "test:ui": "playwright test tests/scenario-ui.spec.js --project=chromium",
+    "test:ui:headed": "playwright test tests/scenario-ui.spec.js --project=chromium --headed",
+    "report": "playwright show-report"
   },
   "repository": {
     "type": "git",

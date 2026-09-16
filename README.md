@@ -20,3 +20,5 @@ Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안�
 `npm install` 후 `npm run test:scenario`를 실행하면 배포 사이트, 원본 문제 브랜치, 공식 정답 저장소의 해결 파일과 Git 이력, Actions Release asset, 실제 Pages 응답을 검사합니다. Android Termux처럼 Playwright가 기본 브라우저 경로를 지원하지 않는 환경에서도 API 검증은 `PLAYWRIGHT_BROWSERS_PATH=0`으로 실행됩니다. 브라우저 UI 테스트에는 Playwright가 지원하는 데스크톱 Linux·macOS·Windows와 Chromium 설치가 필요합니다.
 
 공식 정답은 [`nowcika/git-scenario-solution`](https://github.com/nowcika/git-scenario-solution)에서 확인할 수 있습니다. 각 시나리오 카드의 **정답 결과 보기**는 해당 해결 브랜치, 자동 생성 Release 또는 실제 Pages 사이트로 직접 연결됩니다.
+
+데스크톱에서 Chromium UI 검증을 이어서 실행하려면 [DESKTOP-HANDOFF.md](DESKTOP-HANDOFF.md)를 따르세요. 정답 URL 입력부터 290점 확인과 결과 화면 캡처까지 자동화돼 있습니다.
