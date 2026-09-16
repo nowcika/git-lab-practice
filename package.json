@@ -1,0 +1,25 @@
+{
+  "name": "git_test",
+  "version": "1.0.0",
+  "description": "Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안내, 여섯 가지 실습 과제, 공개 GitHub 저장소 자동 채점, JSON 결과 다운로드를 제공합니다.",
+  "main": "app.js",
+  "scripts": {
+    "test": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test",
+    "test:scenario": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test tests/scenario-api.spec.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nowcika/git-lab-practice.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nowcika/git-lab-practice/issues"
+  },
+  "homepage": "https://github.com/nowcika/git-lab-practice#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

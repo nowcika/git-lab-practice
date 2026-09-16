@@ -14,3 +14,7 @@ Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안�
 채점은 입력한 GitHub 사용자 이름과 개인 계정 소유의 공개 저장소를 GitHub REST API로 조회합니다. README의 `git-lab-사용자이름` 문구, 기본 브랜치의 커밋 2개, `practice/feature` 브랜치, `학습 계획` 이슈, 해당 브랜치에서 기본 브랜치로 만든 PR을 확인합니다. `git --version` 출력은 형식만 검사하므로 로컬 설치 자체를 증명하지는 않습니다. 공개 API로 이메일 인증이나 계정 소유권도 확인할 수 없습니다. API 한도 또는 네트워크 오류는 `확인 불가`로 표시됩니다.
 
 입력값은 브라우저 `localStorage`에 보관됩니다. 채점 정보는 사이트 서버로 전송되지 않고 GitHub API에 직접 요청됩니다.
+
+## Playwright 전체 검증
+
+`npm install` 후 `npm run test:scenario`를 실행하면 배포 사이트, 원본 문제 브랜치, 공식 정답 저장소의 해결 파일과 Git 이력, Actions Release asset, 실제 Pages 응답을 검사합니다. Android Termux처럼 Playwright가 기본 브라우저 경로를 지원하지 않는 환경에서도 API 검증은 `PLAYWRIGHT_BROWSERS_PATH=0`으로 실행됩니다. 브라우저 UI 테스트에는 Playwright가 지원하는 데스크톱 Linux·macOS·Windows와 Chromium 설치가 필요합니다.
