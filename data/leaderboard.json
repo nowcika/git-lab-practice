@@ -1,21 +1,6 @@
 {
   "schemaVersion": 1,
   "rulesVersion": "2026-09-public-v1",
-  "updatedAt": "2026-09-16T22:42:28.354Z",
-  "entries": [
-    {
-      "rulesVersion": "2026-09-public-v1",
-      "userId": 84158293,
-      "login": "nowcika",
-      "course": "basic",
-      "repository": "nowcika/git-lab-practice",
-      "score": 40,
-      "maxScore": 90,
-      "passed": 3,
-      "total": 7,
-      "checkedAt": "2026-09-16T22:42:16.084Z",
-      "issueNumber": 1,
-      "runId": 35158909001
-    }
-  ]
+  "updatedAt": "2026-09-16T22:56:03.597Z",
+  "entries": []
 }
