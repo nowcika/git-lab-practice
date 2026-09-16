@@ -17,7 +17,8 @@
 - 사용자 식별은 변경 가능한 표시 이름 대신 GitHub 사용자 ID를 사용합니다. 과정마다 최고 점수 하나를 저장합니다.
 - 동점은 공동 순위 `1, 1, 3`이며, 표시는 최고 점수의 최초 달성 시각 순입니다.
 - 낮은 점수나 확인 불가 결과로 기존 최고 점수를 덮어쓰지 않습니다.
-- 공식 예제/정답 저장소, 다른 사람 소유 저장소, 비공개 저장소는 등록하지 않습니다.
+- 이 프로젝트가 운영하는 저장소는 등록하지 않습니다. 순위표 자신(`nowcika/git-lab-practice`), 문제(`git-scenario-lab`), 외부 자료(`git-scenario-library`), 정답(`git-scenario-solution`), 예제(`git-lab-example`)가 모두 해당하며 `lib/leaderboard-service.js`의 `BLOCKED_REPOSITORIES`에서 관리합니다. 대소문자가 달라도 차단합니다.
+- 다른 사람 소유 저장소와 비공개 저장소도 등록하지 않습니다.
 - 채점 당시 공개 결과를 기록하는 방식입니다. 이후 저장소 변경을 자동 감시하지는 않습니다.
 
 ## 신뢰 범위
@@ -52,7 +53,7 @@ npm run leaderboard:smoke
 
 GitHub Actions 화면에서 `Public leaderboard → Run workflow`를 실행할 때 이슈 번호를 비우면 동일한 게시 없는 점검을 합니다. 이슈 번호를 지정하면 이미 사용자가 공개 제출한 이슈를 다시 검사해 최고 점수를 반영합니다. 로컬 셸에서 `leaderboard-publish.js`를 실행하는 것은 차단합니다.
 
-첫 등록 전에 실제 참가자를 사칭한 테스트 이슈나 가짜 점수를 만들지 않습니다. 단위 테스트는 저장 API 충돌·보존을 모의 검증하고, Playwright는 가상 순위로 공동 순위·검색·페이지 이동·모바일·제출 연결을 확인합니다. 공개 저장소이므로 악의적인 대량 제출은 이슈 잠금/사용자 차단과 Actions 실행 제한으로 운영자가 대응해야 합니다.
+운영 점검은 이슈 번호를 비운 `Run workflow`로 하고, 실제 제출 이슈를 만들어 순위에 올리지 마세요. 점검용 기록이 순위표에 남았다면 `leaderboard-data` 브랜치에서 해당 항목을 지웁니다. **처리가 끝난 제출·삭제 요청 이슈는 닫아 두세요.** 이슈가 열려 있으면 본문을 수정할 때 검사와 삭제가 다시 실행됩니다(이슈를 닫는 것은 워크플로를 트리거하지 않습니다). 첫 등록 전에 실제 참가자를 사칭한 테스트 이슈나 가짜 점수를 만들지 않습니다. 단위 테스트는 저장 API 충돌·보존을 모의 검증하고, Playwright는 가상 순위로 공동 순위·검색·페이지 이동·모바일·제출 연결을 확인합니다. 공개 저장소이므로 악의적인 대량 제출은 이슈 잠금/사용자 차단과 Actions 실행 제한으로 운영자가 대응해야 합니다.
 
 참고: [GitHub Issues 이벤트](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#issues), [Contents API](https://docs.github.com/en/rest/repos/contents#create-or-update-file-contents), [GITHUB_TOKEN 권한](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token).
 
@@ -69,3 +70,18 @@ GitHub Actions 화면에서 `Public leaderboard → Run workflow`를 실행할 �
 삭제는 현재 순위표에서의 제외입니다. 기존 이슈·Actions·Git 이력까지 삭제하지 않습니다. 진행 중인 채점이 있으면 완료 후 삭제하세요. 다시 등록하려면 새로 제출합니다.
 
 공개 등록은 선택 사항입니다. 웹페이지의 공개 동의 체크박스는 기본 해제 상태이며, 동의해야 제출 링크로 이동합니다. GitHub 제출 양식에서도 공개 동의를 확인합니다. 일반 채점만 실행하면 순위표에 자동 등록되지 않습니다.
+
+## 유지보수 시 주의할 계약
+
+서버 재채점은 이 저장소의 웹 채점기를 브라우저에서 실행한 뒤 결과를 전역에서 읽습니다.
+아래 이름과 형태를 바꾸면 **GitHub Actions에서만 조용히 깨지므로** 반드시 함께 고치세요.
+
+| 전역 | 설정 위치 | 형태 |
+| --- | --- | --- |
+| `window.lastBasicReport` | `app.js`의 `render()` | `{ score, results:[{ name, points, state, detail }] }` · 서버는 첫 항목(설치 출력)을 제외한 7개를 사용 |
+| `window.lastScenarioReport` | `scenarios.js`의 `renderScenarioResults()` | `{ score, results:[{ name, points, state, detail }] }` · 20개 항목 |
+
+`tests/basic-ui.spec.js`의 **공개 순위표 서버 검증이 읽는 채점 결과 계약이 유지된다**
+테스트가 항목 수와 배점 합계까지 확인합니다. 채점 항목 수나 배점을 바꾸면
+`leaderboard-core.js`의 `COURSES`(초급 90점 7항목, 실전 325점 20항목)도 함께
+맞춰야 하며, 기존 점수와 비교가 불가능해지면 `RULES_VERSION`을 올리세요.
