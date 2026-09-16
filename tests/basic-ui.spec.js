@@ -137,3 +137,37 @@ test('Windows 설치 안내에 터미널과 인코딩 주의사항이 있다', a
   await expect(windows).toContainText('UTF-8(BOM 없음)');
   await expect(windows).toContainText('core.autocrlf');
 });
+
+test('초급 채점은 병합된 PR의 현재 브랜치 SHA와 실제 커밋을 확인한다', async ({ page }) => {
+  const featureSha = 'a'.repeat(40);
+  let submitted = featureSha;
+  const commit = { sha: featureSha, commit: { tree: { sha: 'tree-a' }, committer: { name: 'Student', email: 'student@example.invalid' } } };
+  await page.route('https://api.github.com/**', async route => {
+    const url = new URL(route.request().url());
+    const p = url.pathname;
+    const pr = { number: 2, title: 'Feature', merged_at: '2026-09-16T00:00:00Z', user: { login: 'student' }, head: { ref: 'practice/feature', sha: submitted, repo: { full_name: 'student/lab' } }, base: { ref: 'main', repo: { full_name: 'student/lab' } } };
+    let data;
+    if (p === '/rate_limit') data = { resources: { core: { remaining: 5000, reset: 2000000000 } } };
+    else if (p === '/users/student') data = { login: 'student' };
+    else if (p === '/repos/student/lab') data = { full_name: 'student/lab', owner: { login: 'student' }, default_branch: 'main', fork: false };
+    else if (p.includes('/contents/')) data = { encoding: 'base64', content: Buffer.from('git-lab-student').toString('base64') };
+    else if (p.includes('/compare/')) data = { ahead_by: 0, head_commit: { sha: featureSha }, commits: [] };
+    else if (p.endsWith('/pulls/2/commits')) data = [commit];
+    else if (p.endsWith('/commits')) data = [commit, { ...commit, commit: { ...commit.commit, tree: { sha: 'tree-b' } } }];
+    else if (p.endsWith('/issues')) data = [{ number: 1, title: '학습 계획', user: { login: 'student' } }];
+    else if (p.endsWith('/pulls')) data = [pr];
+    else throw new Error(`Unexpected request: ${p}`);
+    await route.fulfill({ json: data });
+  });
+  await page.goto('/');
+  await page.locator('#gitVersion').fill('git version 2.48.1');
+  await page.locator('#username').fill('student');
+  await page.locator('#repoUrl').fill('https://github.com/student/lab');
+  await page.locator('#gradeButton').click();
+  await expect(page.locator('#resultList .result-mark.pass')).toHaveCount(8);
+  await expect(page.locator('#scoreRingText')).toHaveText('100%');
+  submitted = 'b'.repeat(40);
+  await page.locator('#gradeButton').click();
+  await expect(page.locator('#resultList .result-mark.fail')).toHaveCount(1);
+  await expect(page.locator('#scoreRingText')).toHaveText('85%');
+});

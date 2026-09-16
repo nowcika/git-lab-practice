@@ -116,7 +116,7 @@ test('practice/feature가 기본 브랜치와 같으면 실패한다', async t =
   f.git('branch', '-f', 'practice/feature', 'main');
   const r = await grade(f.options, { github: f.github });
   assert.equal(item(r, 'branch').state, 'fail');
-  assert.match(item(r, 'branch').detail, /기본 브랜치와 같습니다/);
+  assert.match(item(r, 'branch').detail, /병합된 PR이 없습니다/);
 });
 
 test('다른 계정이 만든 이슈와 PR은 인정하지 않는다', async t => {
@@ -347,4 +347,43 @@ test('Pages의 서버 오류는 확인 불가, 정상 응답의 틀린 내용은
   assert.equal(item(r, 'pages').state, 'unknown');
   r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github, fetch: async () => ({ status: 200, ok: true, text: async () => 'wrong website' }) });
   assert.equal(item(r, 'pages').state, 'fail');
+});
+
+test('rebase 기준 참조가 없거나 다른 저장소 참조이면 확인 불가, 올바른 기준은 통과', async t => {
+  const f = fixture(t);
+  f.write('service/api.md', 'FLOW-BASE-API-2026');
+  f.write('service/ui.md', 'FLOW-TOPIC-UI-2026');
+  f.write('config/deploy-target.md', '배포 대상: production\n담당: 플랫폼팀\n승인 코드: REBASE-CONFLICT-2026');
+  f.commit('feat: add ui service note');
+  f.git('branch', 'solution/pull-rebase'); f.git('branch', 'solution/rebase-conflict');
+  const options = { ...f.options, course: 'scenarios', offline: true };
+  let r = await grade(options);
+  for (const id of ['pullrebase', 'rebaseconflict']) assert.equal(item(r, id).state, 'unknown');
+  f.git('remote', 'add', 'upstream', 'https://github.com/other/unrelated.git');
+  for (const name of ['rebase-flow-base', 'rebase-conflict-base']) f.git('update-ref', `refs/remotes/upstream/scenario/${name}`, 'main');
+  r = await grade(options);
+  for (const id of ['pullrebase', 'rebaseconflict']) assert.equal(item(r, id).state, 'unknown');
+  f.git('remote', 'set-url', 'upstream', 'https://github.com/nowcika/git-scenario-lab.git');
+  r = await grade(options);
+  for (const id of ['pullrebase', 'rebaseconflict']) assert.equal(item(r, id).state, 'pass');
+});
+
+test('정상 PR 병합 후에도 브랜치 점수를 유지하고 다른 SHA의 병합 이력은 거부한다', async t => {
+  const f = fixture(t); const featureSha = f.git('rev-parse', 'practice/feature');
+  f.git('merge', '--ff-only', 'practice/feature');
+  const get = f.github.get;
+  let submitted = featureSha;
+  f.github.get = async endpoint => {
+    if (endpoint.includes('/pulls?')) {
+      const values = await get(endpoint);
+      return values.map(p => ({ ...p, merged_at: '2026-09-16T00:00:00Z', head: { ...p.head, sha: submitted } }));
+    }
+    if (endpoint.includes('/pulls/2/commits')) return [{ sha: featureSha }];
+    return get(endpoint);
+  };
+  let r = await grade(f.options, { github: f.github });
+  assert.equal(r.score, 100); assert.equal(item(r, 'branch').evidence.mergedPr, 2);
+  submitted = '0'.repeat(40);
+  r = await grade(f.options, { github: f.github });
+  assert.equal(item(r, 'branch').state, 'fail');
 });

@@ -1,12 +1,12 @@
 {
   "name": "git-lab-practice",
   "version": "1.0.0",
-  "description": "Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안내, 여섯 가지 실습 과제, 열여덟 가지 실전 시나리오, 명령어 활용 사례, 공개 GitHub 저장소 자동 채점, 로컬 저장소 검증기를 제공합니다.",
+  "description": "Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안내, 여섯 가지 실습 과제, 스무 가지 실전 시나리오, 명령어 활용 사례, 공개 GitHub 저장소 자동 채점, 로컬 저장소 검증기를 제공합니다.",
   "main": "lib/local-grader.js",
   "scripts": {
     "serve": "node bin/static-server.js 4173",
     "test": "npm run test:local && node bin/run-tests.js",
-    "test:local": "node --test tests/local-grader.test.cjs",
+    "test:local": "node --test tests/local-grader.test.cjs tests/review-regressions.test.cjs",
     "test:scenario": "node bin/run-tests.js --project=api",
     "test:ui": "node bin/run-tests.js --project=chromium",
     "test:ui:headed": "node bin/run-tests.js --project=chromium --headed",

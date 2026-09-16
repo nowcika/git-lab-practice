@@ -5,7 +5,7 @@ if (setupRoot) setupRoot.innerHTML = `
 <div class="manual-shot"><img src="assets/git-install.png" alt="Git 공식 운영체제 선택 화면"><i class="pin install-p1">1</i><i class="pin install-p2">2</i><i class="pin install-p3">3</i></div>
 <div class="manual-callouts"><span><b>1</b><strong>Windows</strong>회사·교육장 PC 대부분은 이 메뉴를 선택합니다.</span><span><b>2</b><strong>macOS</strong>MacBook 또는 iMac 사용자는 이 메뉴를 선택합니다.</span><span><b>3</b><strong>Linux</strong>Ubuntu·Fedora 등 배포판별 명령을 확인합니다.</span></div>
 <div class="os-guides">
-<details open><summary>Windows 설치 <small>처음 설치할 때 권장</small></summary><div><ol><li>공식 Windows 페이지에서 PC에 맞는 설치 파일을 받습니다. 대부분의 Intel·AMD PC는 <strong>x64 Setup</strong>, ARM 기반 PC만 <strong>ARM64 Setup</strong>입니다.</li><li>다운로드한 설치 파일을 실행합니다. Windows의 변경 허용 질문이 나오면 게시자가 Git for Windows인지 확인하고 허용합니다.</li><li>수업용 기본 설치에서는 구성 요소, 기본 편집기, PATH, HTTPS, 줄바꿈 등의 옵션을 이해하지 못한다면 설치 프로그램의 기본값을 유지해도 됩니다.</li><li>설치 완료 후 기존 터미널을 닫고 <strong>Git Bash</strong>를 새로 엽니다. 이 실습의 모든 명령은 Git Bash 기준입니다. PowerShell과 명령 프롬프트는 <code>mkdir -p</code>나 <code>cat &gt; 파일 &lt;&lt;'EOF'</code> 같은 문법을 지원하지 않고, <code>&gt;</code>로 만든 파일이 UTF-16으로 저장돼 채점에 실패할 수 있습니다.</li><li><code>git --version</code>을 실행합니다. 이어서 아래 사용자 정보를 본인 값으로 설정합니다.</li></ol><div class="manual-shot inline-shot"><img src="assets/git-windows.png" alt="Git for Windows 공식 다운로드 화면"><i class="pin win-p1">1</i><i class="pin win-p2">2</i></div><div class="inline-caption"><span><b>1</b> 일반적인 Windows PC는 최신 x64 설치 파일</span><span><b>2</b> 명령 설치를 선호하면 화면의 winget 명령</span></div><pre><code>git --version
+<details open><summary>Windows 설치 <small>처음 설치할 때 권장</small></summary><div><ol><li>공식 Windows 페이지에서 PC에 맞는 설치 파일을 받습니다. 대부분의 Intel·AMD PC는 <strong>x64 Setup</strong>, ARM 기반 PC만 <strong>ARM64 Setup</strong>입니다.</li><li>다운로드한 설치 파일을 실행합니다. Windows의 변경 허용 질문이 나오면 게시자가 Git for Windows인지 확인하고 허용합니다.</li><li>수업용 기본 설치에서는 구성 요소, 기본 편집기, PATH, HTTPS, 줄바꿈 등의 옵션을 이해하지 못한다면 설치 프로그램의 기본값을 유지해도 됩니다.</li><li>설치 완료 후 기존 터미널을 닫고 <strong>Git Bash</strong>를 새로 엽니다. 이 실습의 모든 명령은 Git Bash 기준입니다. Bash의 heredoc 문법은 PowerShell·명령 프롬프트에서 그대로 실행되지 않습니다. Windows PowerShell 5.1의 <code>&gt;</code>는 UTF-16LE를 사용하지만 PowerShell 7의 기본 텍스트 출력은 UTF-8입니다.</li><li><code>git --version</code>을 실행합니다. 이어서 아래 사용자 정보를 본인 값으로 설정합니다.</li></ol><div class="manual-shot inline-shot"><img src="assets/git-windows.png" alt="Git for Windows 공식 다운로드 화면"><i class="pin win-p1">1</i><i class="pin win-p2">2</i></div><div class="inline-caption"><span><b>1</b> 일반적인 Windows PC는 최신 x64 설치 파일</span><span><b>2</b> 명령 설치를 선호하면 화면의 winget 명령</span></div><pre><code>git --version
 git config --global user.name "홍길동"
 git config --global user.email "GitHub에 등록한 이메일"
 
@@ -148,7 +148,7 @@ const guideUsage = {
       ['git commit -m "메시지"', '한 줄 메시지로 커밋합니다.'],
       ['git commit', '에디터를 열어 제목과 본문을 나눠 적습니다. 이유를 남길 때 권장합니다.'],
       ['git commit -am "메시지"', '추적 중인 파일을 add와 동시에 커밋합니다(새 파일은 제외).'],
-      ['git commit --amend --no-edit', '방금 커밋에 빠뜨린 파일을 추가합니다.'],
+      ['git commit --amend --no-edit', '먼저 git add로 수정 파일을 담은 뒤 실행합니다. 최신 커밋의 SHA가 바뀝니다.'],
       ['git commit --allow-empty -m "trigger"', '변경 없이 커밋합니다. CI 재실행용이며 채점에서는 인정되지 않습니다.']
     ]],
     ['git log', [
@@ -181,7 +181,8 @@ const guideUsage = {
       ['gh issue create --title "학습 계획"', '브라우저 없이 이슈를 만듭니다.'],
       ['gh issue list', '열린 이슈 목록을 봅니다. --state all 로 닫힌 것까지 봅니다.'],
       ['gh issue view 1', '이슈 내용을 터미널에서 확인합니다.'],
-      ['gh issue close 1 / reopen 1', '닫기와 다시 열기.'],
+      ['gh issue close 1', '이슈를 닫습니다.'],
+      ['gh issue reopen 1', '닫힌 이슈를 다시 엽니다.'],
       ['gh issue comment 1 --body "진행 중"', '댓글을 남깁니다.']
     ]],
     ['커밋과 이슈 연결', [
@@ -195,7 +196,8 @@ const guideUsage = {
     ['터미널에서 PR 다루기 (gh)', [
       ['gh pr create --base main --head practice/feature', '브라우저 없이 PR을 만듭니다.'],
       ['gh pr create --fill', '커밋 메시지로 제목과 본문을 자동으로 채웁니다.'],
-      ['gh pr list / gh pr view --web', '목록 확인과 브라우저로 열기.'],
+      ['gh pr list', 'PR 목록을 확인합니다.'],
+      ['gh pr view --web', '현재 브랜치의 PR을 브라우저로 엽니다.'],
       ['gh pr checkout 2', '남의 PR 브랜치를 내 PC로 받아 확인합니다.'],
       ['gh pr merge 2 --squash', '병합 방식을 골라 병합합니다.']
     ]],
@@ -203,7 +205,7 @@ const guideUsage = {
       ['git diff main...practice/feature', 'PR 화면과 같은 기준으로 변경을 미리 봅니다.'],
       ['git log main..practice/feature', 'PR에 들어갈 커밋 목록을 확인합니다.'],
       ['git fetch origin && git rebase origin/main', '최신 main 위로 정리해 충돌을 줄입니다.'],
-      ['git push --force-with-lease', 'rebase 후 안전하게 다시 올립니다.']
+      ['git push --force-with-lease', '이력 재작성에 합의한 브랜치에서 사용합니다. 원격이 로컬 추적 참조와 같을 때만 덮어쓰지만, 백그라운드 fetch가 그 참조를 갱신하면 보호가 약해질 수 있습니다.']
     ]]
   ]
 };

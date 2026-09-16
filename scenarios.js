@@ -108,7 +108,7 @@ git push -u origin solution/external-remote`, checks:['`git remote -v`에 origin
       ['다른 저장소에서 파일 가져오기', [
         ['git show <원격>/<브랜치>:<파일> > <파일>', '한 파일만 현재 폴더로 꺼냅니다. 이력은 가져오지 않습니다.'],
         ['git checkout <원격>/<브랜치> -- <경로>', '여러 파일·폴더를 한 번에 가져와 스테이지에 올립니다.'],
-        ['git restore --source=<원격>/<브랜치> <경로>', '위와 같은 동작의 최신 명령입니다.'],
+        ['git restore --source=<원격>/<브랜치> <경로>', '지정한 버전의 파일을 작업 트리에 복원합니다. 기본적으로 스테이지는 바꾸지 않으므로 이후 git add가 필요합니다.'],
         ['git cherry-pick <커밋>', '파일이 아니라 커밋 단위로 가져옵니다(이력과 메시지 유지).'],
         ['git subtree add --prefix=vendor <주소> main', '다른 저장소 전체를 하위 폴더로 합칩니다.'],
         ['git submodule add <주소> vendor', '다른 저장소를 링크로 연결합니다. 받는 쪽도 별도 init이 필요합니다.']
@@ -152,13 +152,15 @@ git push -u origin solution/rebase`, checks:['base-update.txt와 topic.txt가 �
         ['git rebase <기준>', '현재 브랜치의 커밋을 기준 브랜치 끝으로 옮겨 붙입니다.'],
         ['git rebase -i HEAD~3', '대화형. 커밋을 합치고(squash), 순서를 바꾸고, 메시지를 고칩니다.'],
         ['git rebase --onto <새기준> <옛기준> <브랜치>', '잘못된 기준에서 뻗은 브랜치를 정확히 옮깁니다.'],
-        ['git rebase --continue / --skip / --abort', '충돌 처리 3종 세트. abort는 시작 전 상태로 되돌립니다.'],
-        ['git rebase --autosquash', 'fixup!/squash! 커밋을 자동으로 제자리에 합칩니다.'],
+        ['git rebase --continue', '충돌을 수정하고 git add한 뒤 계속합니다.'],
+        ['git rebase --skip', '현재 적용 중인 커밋의 변경을 제외합니다. 필요한 변경까지 빠지지 않는지 확인하세요.'],
+        ['git rebase --abort', 'rebase 시작 전 상태로 돌아갑니다.'],
+        ['git rebase -i --autosquash <기준>', 'fixup!/squash! 커밋을 대화형 목록에서 대상 커밋 옆에 배치해 합칩니다. 목록을 확인한 뒤 저장하세요.'],
         ['git pull --rebase', 'merge 커밋 없이 원격 변경 위로 내 커밋을 재배치합니다.']
       ]],
       ['rebase 주의', [
         ['공유된 브랜치는 rebase 금지', 'SHA가 전부 바뀌어 동료의 이력과 충돌합니다.'],
-        ['force push가 필요할 때', 'git push --force-with-lease 를 쓰면 남의 새 커밋을 덮어쓰지 않습니다.'],
+        ['force push가 필요할 때', '합의한 브랜치에서만 사용하세요. 원격과 로컬 추적 참조를 비교하지만 백그라운드 fetch가 참조를 갱신하면 남의 변경을 덮어쓸 수 있습니다.'],
         ['되돌리고 싶을 때', 'git reflog 에서 rebase 전 SHA를 찾아 git reset --hard <SHA>'],
         ['merge와의 차이', 'merge는 합친 사실을 남기고, rebase는 한 줄로 정리합니다.']
       ]]
@@ -257,14 +259,14 @@ git push -u origin solution/reset`, checks:['reset 전 두 커밋의 순서를 l
       ['git reset 세 가지 모드', [
         ['git reset --soft HEAD~1', '커밋만 취소. 변경은 스테이지에 그대로 남습니다. 커밋을 다시 묶을 때 사용합니다.'],
         ['git reset --mixed HEAD~1', '기본값. 커밋과 스테이지를 취소하고 파일 변경은 남깁니다.'],
-        ['git reset --hard HEAD~1', '커밋·스테이지·파일 변경을 모두 버립니다. 되돌리려면 reflog가 필요합니다.'],
+        ['git reset --hard HEAD~1', '브랜치를 이전 커밋으로 옮기고 추적 파일과 스테이지를 되돌립니다. reflog는 커밋 복구에 쓰며, 커밋하지 않은 파일 변경은 보통 복구하지 못합니다.'],
         ['git reset <파일>', '스테이지에서만 내립니다(= git restore --staged <파일>).'],
         ['git reset --hard origin/main', '로컬을 원격 상태로 강제로 맞춥니다. 로컬 변경은 사라집니다.']
       ]],
       ['비슷하지만 다른 명령', [
         ['git restore <파일>', '작업 폴더의 변경만 취소합니다(커밋·스테이지 영향 없음).'],
         ['git restore --staged <파일>', '스테이지만 취소합니다.'],
-        ['git clean -nd', '추적되지 않는 파일을 "미리보기"합니다. -n을 빼면 실제 삭제됩니다.'],
+        ['git clean -nd', '미추적 파일과 폴더의 삭제 대상을 미리 봅니다. 실제 삭제는 일반적으로 git clean -fd이며, 실행 전 대상과 백업을 확인하세요.'],
         ['git stash', '지금 변경을 잠시 치워 둡니다. reset 대신 안전하게 작업을 보류할 때 씁니다.'],
         ['git stash pop', '치워 둔 변경을 다시 꺼냅니다.']
       ]]
@@ -299,7 +301,8 @@ git push -u origin solution/reflog`, checks:['reset 직후 recovered-note.txt가
         ['git reset --hard <SHA>', '브랜치 전체를 그 시점으로 되돌립니다.'],
         ['git branch rescue <SHA>', '잃어버린 커밋에 이름을 붙여 안전하게 보관합니다.'],
         ['git fsck --lost-found', 'reflog에도 없는 고아 커밋을 찾습니다. 최후의 수단입니다.'],
-        ['git stash list / git stash apply', 'stash로 치워 둔 변경도 같은 방식으로 복구합니다.']
+        ['git stash list', '보관한 변경 목록을 확인합니다.'],
+        ['git stash apply', '보관한 변경을 적용하고 stash 항목은 남겨 둡니다.']
       ]]
     ] },
   { id:'amend', no:'10', title:'git commit --amend로 마지막 커밋 수정하기', points:15, level:'History · Amend', goal:'마지막 커밋의 파일 오타와 커밋 메시지를 새 커밋을 추가하지 않고 바로잡습니다.', commands:`git fetch upstream
@@ -323,7 +326,8 @@ git push -u origin solution/amend`, checks:['수정 대상이 가장 최근 커�
       ['더 오래된 커밋을 고칠 때', [
         ['git rebase -i HEAD~3 → reword', '메시지만 고칩니다.'],
         ['git rebase -i HEAD~3 → edit', '해당 커밋에서 멈춰 파일을 고친 뒤 --continue 합니다.'],
-        ['git commit --fixup <SHA> + rebase -i --autosquash', '수정 커밋을 만들어 두고 나중에 자동으로 합칩니다.'],
+        ['git commit --fixup <SHA>', 'git add로 담은 수정으로 대상 커밋의 보완 커밋을 만듭니다.'],
+        ['git rebase -i --autosquash <기준>', '대상 커밋이 범위에 포함되도록 기준을 선택한 뒤 보완 커밋을 합칩니다.'],
         ['push 이후라면', 'git push --force-with-lease 가 필요하며, 공유 브랜치에서는 팀과 합의하세요.']
       ]]
     ] },
@@ -341,7 +345,9 @@ git push -u origin solution/cherry-pick`, checks:['소스 브랜치의 최신 SH
         ['git cherry-pick -n <SHA>', '커밋하지 않고 변경만 올려 여러 개를 한 커밋으로 묶습니다.'],
         ['git cherry-pick -x <SHA>', '"cherry picked from ..." 줄을 메시지에 남겨 출처를 기록합니다.'],
         ['git cherry-pick -m 1 <머지커밋>', 'merge 커밋을 가져올 때 기준 부모를 지정합니다.'],
-        ['git cherry-pick --continue / --abort / --quit', '충돌 처리 3종 세트입니다.']
+        ['git cherry-pick --continue', '충돌 해결 후 git add하고 계속합니다.'],
+        ['git cherry-pick --abort', '시작 전 상태로 되돌립니다.'],
+        ['git cherry-pick --quit', '진행 상태만 지웁니다. 현재 파일과 커밋은 되돌리지 않습니다.']
       ]],
       ['적용 대상 찾기', [
         ['git log --oneline <브랜치> -5', '가져올 커밋의 SHA를 확인합니다.'],
@@ -440,7 +446,9 @@ git push -u origin solution/patch`, checks:['patch 안에 From, Date, Subject와
         ['git apply <파일>', '변경만 적용합니다. 커밋은 직접 해야 합니다.'],
         ['git apply --check <파일>', '적용 가능한지 확인만 합니다(파일은 그대로).'],
         ['git apply --3way <파일>', '충돌 시 3-way 병합으로 해결을 시도합니다.'],
-        ['git am --continue / --skip / --abort', '충돌 처리 3종 세트입니다.'],
+        ['git am --continue', '충돌 해결 후 git add하고 계속합니다.'],
+        ['git am --skip', '현재 patch를 제외하고 다음으로 넘어갑니다.'],
+        ['git am --abort', 'patch 적용 시작 전 상태로 돌아갑니다.'],
         ['git am --show-current-patch', '멈춘 지점의 patch 내용을 확인합니다.']
       ]]
     ] },
@@ -510,12 +518,14 @@ git status`, checks:['브랜치 이동 전 변경을 커밋해 작업 폴더가 
         ['git branch', '로컬 브랜치 목록. -a는 원격까지, -r은 원격만 봅니다.'],
         ['git branch -vv', '각 브랜치가 어떤 원격을 추적하고 몇 커밋 앞서는지 봅니다.'],
         ['git branch -m <새이름>', '현재 브랜치 이름을 바꿉니다.'],
-        ['git branch -d <이름> / -D <이름>', '병합된 브랜치 삭제 / 강제 삭제.'],
+        ['git branch -d <이름>', '병합 상태를 확인한 뒤 로컬 브랜치를 삭제합니다.'],
+        ['git branch -D <이름>', '미병합 커밋이 있어도 로컬 브랜치를 삭제합니다. 필요한 커밋은 먼저 보관하세요.'],
         ['git branch --merged main', 'main에 이미 합쳐진 브랜치만 골라 정리 대상을 찾습니다.']
       ]],
       ['이동 중 작업 보관', [
         ['git stash push -m "작업중"', '커밋하기 애매한 변경을 이름표와 함께 보관합니다.'],
-        ['git stash list / git stash pop', '목록 확인과 되돌리기.'],
+        ['git stash list', '보관한 변경 목록을 확인합니다.'],
+        ['git stash pop', '변경을 적용하고 성공하면 stash 항목을 제거합니다. 충돌하면 항목은 남습니다.'],
         ['git stash -u', '추적되지 않는 새 파일까지 함께 보관합니다.'],
         ['git switch -', '직전 브랜치로 즉시 돌아갑니다.'],
         ['git worktree add ../feature feature', '브랜치를 옮기지 않고 별도 폴더에서 동시에 작업합니다.']
@@ -685,7 +695,8 @@ git show solution-v1.0.0`, checks:['태그 이름이 정확히 `solution-v1.0.0`
         ['git show <태그>', '태그 메시지와 가리키는 커밋을 확인합니다.'],
         ['git switch --detach <태그>', '그 시점 상태를 그대로 열어 봅니다.'],
         ['git describe --tags', '현재 커밋을 "가장 가까운 태그+거리"로 표현합니다.'],
-        ['git push origin <태그> / --tags', '하나만 올리기 / 전부 올리기.'],
+        ['git push origin <태그>', '선택한 태그 하나만 올립니다.'],
+        ['git push origin --tags', '모든 로컬 태그를 올립니다. 공개할 태그 목록을 먼저 확인하세요.'],
         ['git fetch --tags', '다른 사람이 만든 태그를 받아옵니다.']
       ]]
     ] }
@@ -707,7 +718,10 @@ function windowsUsage(commands) {
   const lines = text.split('\n').filter(line => !line.trim().startsWith('#'));
   const has = (re) => lines.some(line => re.test(line));
   const cases = [];
-  if (has(/<<\s*'?[A-Za-z]+'?\s*$/)) cases.push(["$내용 = @'  …여러 줄…  '@ ; $내용 | Set-Content -Encoding utf8NoBOM 파일", "heredoc(<< 'EOF')은 PowerShell에 없습니다. here-string(@' 로 열고 줄 맨 앞의 '@ 로 닫기)으로 대신합니다."]);
+  if (has(/<<\s*'?[A-Za-z]+'?\s*$/)) cases.push([`$내용 = @'
+여러 줄의 파일 내용
+'@
+$내용 | Set-Content -Encoding utf8NoBOM 파일`, "heredoc(<< 'EOF')은 PowerShell에 없습니다. here-string(@' 로 열고 줄 맨 앞의 '@ 로 닫기)으로 대신합니다."]);
   if (has(/\bmkdir\s+-p\b/)) cases.push(['New-Item -ItemType Directory -Force 폴더', 'mkdir -p 대신 사용합니다. 폴더가 이미 있어도 오류가 나지 않습니다.']);
   if (has(/\becho\b[^|]*>/)) cases.push([`'내용' | Set-Content -Encoding utf8NoBOM 파일`, 'echo ... > 파일 대신 사용합니다.']);
   if (has(/[^>|]>\s*[\w./-]+\s*$/)) cases.push(['명령 | Out-File -Encoding utf8NoBOM 파일', 'Windows PowerShell 5.1의 > 는 UTF-16으로 저장해 채점에 실패합니다. 반드시 인코딩을 지정하세요.']);
@@ -728,7 +742,7 @@ function usageHtml(usage) {
 }
 
 if (scenarioRoot) {
-  scenarioRoot.innerHTML = `<div class="scenario-start"><div><span class="scenario-kicker">START HERE</span><h3>하나의 Fork에서 19가지 문제를 해결합니다</h3><p>각 시나리오는 독립된 <code>solution/*</code> 브랜치를 사용하므로 순서대로 진행하거나 필요한 항목만 연습할 수 있습니다. 각 카드의 <strong>명령어 활용 사례</strong>에서 옵션별 차이를 함께 확인하세요.</p><p class="scenario-note"><strong>Windows 사용자</strong>: 모든 명령은 <strong>Git Bash</strong>에서 실행하세요. PowerShell과 명령 프롬프트는 <code>mkdir -p</code>·heredoc을 지원하지 않고, <code>&gt;</code>로 만든 파일이 UTF-16으로 저장돼 채점에 실패합니다. 파일은 <strong>UTF-8(BOM 없음)</strong>으로 저장하세요.</p></div><div class="scenario-start-actions"><a href="https://github.com/nowcika/git-scenario-lab/fork" target="_blank" rel="noopener noreferrer">① 원본 저장소 Fork ↗</a><a href="https://github.com/nowcika/git-scenario-lab" target="_blank" rel="noopener noreferrer">원본 구조 보기 ↗</a><a href="https://github.com/nowcika/git-scenario-library" target="_blank" rel="noopener noreferrer">외부 저장소 보기 ↗</a><a href="https://github.com/${OFFICIAL_ANSWER}" target="_blank" rel="noopener noreferrer">전체 정답 저장소 ↗</a></div></div>
+  scenarioRoot.innerHTML = `<div class="scenario-start"><div><span class="scenario-kicker">START HERE</span><h3>하나의 Fork에서 19가지 문제를 해결합니다</h3><p>각 시나리오는 독립된 <code>solution/*</code> 브랜치를 사용하므로 순서대로 진행하거나 필요한 항목만 연습할 수 있습니다. 각 카드의 <strong>명령어 활용 사례</strong>에서 옵션별 차이를 함께 확인하세요.</p><p class="scenario-note"><strong>Windows 사용자</strong>: 모든 명령은 <strong>Git Bash</strong>에서 실행하세요. Bash의 heredoc은 PowerShell·명령 프롬프트에서 그대로 실행되지 않습니다. Windows PowerShell 5.1의 <code>&gt;</code>는 UTF-16LE를 사용하지만 PowerShell 7의 기본 텍스트 출력은 UTF-8입니다. 파일은 <strong>UTF-8(BOM 없음)</strong>으로 저장하세요.</p></div><div class="scenario-start-actions"><a href="https://github.com/nowcika/git-scenario-lab/fork" target="_blank" rel="noopener noreferrer">① 원본 저장소 Fork ↗</a><a href="https://github.com/nowcika/git-scenario-lab" target="_blank" rel="noopener noreferrer">원본 구조 보기 ↗</a><a href="https://github.com/nowcika/git-scenario-library" target="_blank" rel="noopener noreferrer">외부 저장소 보기 ↗</a><a href="https://github.com/${OFFICIAL_ANSWER}" target="_blank" rel="noopener noreferrer">전체 정답 저장소 ↗</a></div></div>
   <div class="scenario-flow"><span><b>1</b> Fork</span><i>→</i><span><b>2</b> Clone</span><i>→</i><span><b>3</b> Remote 연결</span><i>→</i><span><b>4</b> 문제 해결</span><i>→</i><span><b>5</b> Push·채점</span></div>
   <div class="scenario-list">${scenarioDefinitions.map((s, index) => `<details class="scenario" id="scenario-${s.id}" ${s.id==='fork'?'open':''}><summary><span class="scenario-no">${s.no}</span><div><small>${escapeHtml(s.level)}</small><strong>${escapeHtml(s.title)}</strong><p>${escapeHtml(s.goal)}</p></div><b>${s.points}점</b></summary><div class="scenario-body"><div><h4>실행 순서</h4><pre><code data-commands="${index}"></code><button class="scenario-copy" type="button" aria-label="${escapeHtml(s.title)} 명령 복사">명령 복사</button></pre><p class="scenario-verify"><strong>자동 채점 기준</strong>${escapeHtml(s.verify)}</p>${usageHtml(windowsUsage(s.commands) ? [...(s.usage || []), windowsUsage(s.commands)] : s.usage)}</div><div><h4>막혔을 때 확인</h4><ul>${s.checks.map(c=>`<li>${c}</li>`).join('')}</ul><div class="scenario-resource-links"><a class="scenario-doc" href="https://git-scm.com/docs" target="_blank" rel="noopener noreferrer">Git 공식 명령 문서 ↗</a><a class="scenario-answer" href="${scenarioAnswerUrl(s.id)}" target="_blank" rel="noopener noreferrer">정답 결과 보기 ↗</a></div></div></div></details>`).join('')}</div>
   <div class="scenario-grade"><div class="scenario-grade-head"><div><span class="eyebrow">SCENARIO GRADER</span><h3>내 Fork 결과 채점</h3><p>Fork가 Public이어야 인증 없이 확인할 수 있습니다. 채점 1회에 GitHub API를 약 55회 사용합니다.</p></div><button id="scenarioGradeButton" class="grade-button">시나리오 채점하기 <span>→</span></button></div><label for="scenarioRepoUrl">내 Fork 저장소 URL</label><input id="scenarioRepoUrl" type="url" placeholder="https://github.com/내사용자이름/git-scenario-lab" autocomplete="url"><div id="scenarioStatus" role="status" aria-live="polite"></div><div id="scenarioResults" hidden><div class="scenario-score"><strong id="scenarioScore">0</strong><span>/ 325점</span><p id="scenarioScoreMessage"></p></div><div id="scenarioResultList" class="result-list"></div></div></div>`;

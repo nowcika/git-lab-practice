@@ -210,7 +210,23 @@ async function grade() {
           // compare는 브랜치 존재 여부와 "앞선 커밋 수"를 한 번에 알려 줍니다.
           const data = await api(`${base}/compare/${encodeURIComponent(defaultBranch)}...${encodeURIComponent('practice/feature')}`);
           if (data.missing) return failed('practice/feature 브랜치를 GitHub에 푸시하세요.');
-          if (!(data.ahead_by > 0)) return failed('practice/feature가 기본 브랜치와 같습니다. 브랜치에서 파일을 수정해 커밋하고 푸시하세요.');
+          if (!(data.ahead_by > 0)) {
+            const prs = await api(`${base}/pulls?state=closed&per_page=100`);
+            if (!Array.isArray(prs)) return unknown('병합된 PR을 확인할 수 없습니다.');
+            const repository = `${parsed.owner}/${parsed.name}`.toLowerCase();
+            const merged = prs.find(p => p.merged_at && p.head?.sha === data.head_commit?.sha
+              && p.head?.ref === 'practice/feature' && p.base?.ref === defaultBranch
+              && p.head?.repo?.full_name?.toLowerCase() === repository
+              && p.base?.repo?.full_name?.toLowerCase() === repository
+              && p.user?.login?.toLowerCase() === username.toLowerCase());
+            if (!merged) return prs.length >= 100 ? unknown('최근 병합 PR 100개에서 현재 브랜치의 근거를 찾지 못했습니다.')
+              : failed('앞선 변경이나 현재 브랜치 커밋에 해당하는 병합된 PR이 없습니다.');
+            const commits = await api(`${base}/pulls/${merged.number}/commits?per_page=100`);
+            if (!Array.isArray(commits)) return unknown('병합된 PR의 커밋을 확인할 수 없습니다.');
+            if (!commits.some(c => !madeOnWeb(c))) return commits.length >= 100 ? unknown('PR 커밋 조회 범위를 초과했습니다.')
+              : failed('병합된 PR의 커밋이 웹 편집기로 만들어졌습니다.');
+            return passed(`practice/feature의 변경이 PR #${merged.number}로 병합됨`);
+          }
           const local = (data.commits || []).filter(c => !madeOnWeb(c));
           if (!local.length) return failed('practice/feature의 커밋이 웹 편집기로 만들어졌습니다. 터미널에서 커밋해 푸시하세요.');
           return passed(`practice/feature가 기본 브랜치보다 ${data.ahead_by}커밋 앞섬`);
