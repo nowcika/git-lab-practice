@@ -63,7 +63,11 @@ const guides = [
 
 const guideRoot = document.getElementById('guides');
 if (guideRoot) {
-  guideRoot.innerHTML = `<div class="guide-heading"><h3>과제별 실행 가이드</h3><p>과정을 따라 하고, 막히면 ‘안될 때 확인’을 살펴보세요.</p></div><div class="guide-list">${guides.map(g => `
+  guideRoot.innerHTML = `<section class="example-section"><div class="example-title"><div><span class="eyebrow">COMPLETED EXAMPLE</span><h3>완성된 예제로 먼저 확인하세요</h3><p>실제 공개 저장소에 모든 과제를 수행했습니다. 화면의 번호와 아래 설명을 함께 확인하세요.</p></div><a class="example-link" href="https://github.com/nowcika/git-lab-example" target="_blank" rel="noopener noreferrer">예제 저장소 열기 ↗</a></div>
+  <div class="example-shot"><img src="assets/example-repository.png" alt="Git Lab 완성 예제 GitHub 저장소 화면"><i class="pin p1">1</i><i class="pin p2">2</i><i class="pin p3">3</i><i class="pin p4">4</i></div>
+  <div class="callout-list"><span><b>1</b> 저장소 이름과 Public 표시</span><span><b>2</b> 브랜치 선택 메뉴</span><span><b>3</b> 커밋 이력 링크</span><span><b>4</b> README의 목표와 지정 문구</span></div>
+  <div class="example-subgrid"><a href="https://github.com/nowcika/git-lab-example/issues/1" target="_blank" rel="noopener noreferrer"><img src="assets/example-issue.png" alt="학습 계획 예제 이슈 화면"><strong>예제 이슈 #1 확인 ↗</strong><small>제목의 ‘학습 계획’ 문구를 확인하세요.</small></a><a href="https://github.com/nowcika/git-lab-example/pull/2" target="_blank" rel="noopener noreferrer"><img src="assets/example-pr.png" alt="practice feature 예제 Pull Request 화면"><strong>예제 Pull Request #2 확인 ↗</strong><small>base: main ← compare: practice/feature 방향을 확인하세요.</small></a></div>
+  <p class="capture-note">캡처는 2026년 9월 기준 실제 GitHub 공개 화면입니다. GitHub 화면 개편에 따라 버튼 위치는 달라질 수 있으므로, 위 예제 저장소 링크에서 최신 상태를 함께 확인하세요.</p></section><div class="guide-heading"><h3>과제별 실행 가이드</h3><p>과정을 따라 하고, 막히면 ‘안될 때 확인’을 살펴보세요.</p></div><div class="guide-list">${guides.map(g => `
     <details class="guide" id="guide-${g.id}"><summary><span>${g.no}</span><strong>${g.title}</strong><small>${g.sub}</small></summary>
     <div class="guide-body"><div><h4>따라 하기</h4><ol>${g.steps.map(x=>`<li>${x}</li>`).join('')}</ol>${g.cmd ? `<pre><code>${g.cmd}</code><button class="copy-block" type="button">전체 복사</button></pre>` : ''}<p class="guide-success">✓ 성공 기준: ${g.success}</p></div>
     <div class="trouble"><h4>안될 때 확인</h4><ul>${g.trouble.map(x=>`<li>${x}</li>`).join('')}</ul></div></div></details>`).join('')}</div>`;
