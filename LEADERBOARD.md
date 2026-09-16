@@ -55,3 +55,17 @@ GitHub Actions 화면에서 `Public leaderboard → Run workflow`를 실행할 �
 첫 등록 전에 실제 참가자를 사칭한 테스트 이슈나 가짜 점수를 만들지 않습니다. 단위 테스트는 저장 API 충돌·보존을 모의 검증하고, Playwright는 가상 순위로 공동 순위·검색·페이지 이동·모바일·제출 연결을 확인합니다. 공개 저장소이므로 악의적인 대량 제출은 이슈 잠금/사용자 차단과 Actions 실행 제한으로 운영자가 대응해야 합니다.
 
 참고: [GitHub Issues 이벤트](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#issues), [Contents API](https://docs.github.com/en/rest/repos/contents#create-or-update-file-contents), [GITHUB_TOKEN 권한](https://docs.github.com/en/actions/tutorials/authenticate-with-github_token).
+
+## 항목별 상세 결과
+
+순위표 행의 **채점 상세**에서 각 항목의 통과 여부, 획득 점수/배점, 미통과 이유와 안내를 확인합니다. 상세 결과도 공개 데이터에 저장되며, 최고 기록의 검사 결과를 보여 줍니다. 더 낮은 점수의 재제출 결과는 최고 기록을 덮어쓰지 않습니다.
+
+상세 결과가 없는 이전 기록은 재채점 시 같은 저장소·점수·통과 수일 때 상세 결과만 보충합니다. 최초 달성 시각과 순위는 유지하고 상세 검사 시각 및 검증 링크를 별도로 표시합니다.
+
+## 본인 기록 삭제
+
+순위표 아래 **내 순위 기록 삭제**에서 과정을 확인하고 GitHub 이슈를 제출합니다. 삭제 대상은 이슈 작성자의 변경되지 않는 GitHub 사용자 ID와 과정으로 결정하며, 입력한 다른 사용자 이름으로 삭제할 수 없습니다. 게시 단계에서 작성자와 요청 본문을 다시 확인하고 저장 충돌 시 최신 데이터를 다시 읽습니다. 삭제에는 저장소 소유권이나 저장소의 현재 존재 여부가 필요하지 않습니다.
+
+삭제는 현재 순위표에서의 제외입니다. 기존 이슈·Actions·Git 이력까지 삭제하지 않습니다. 진행 중인 채점이 있으면 완료 후 삭제하세요. 다시 등록하려면 새로 제출합니다.
+
+공개 등록은 선택 사항입니다. 웹페이지의 공개 동의 체크박스는 기본 해제 상태이며, 동의해야 제출 링크로 이동합니다. GitHub 제출 양식에서도 공개 동의를 확인합니다. 일반 채점만 실행하면 순위표에 자동 등록되지 않습니다.

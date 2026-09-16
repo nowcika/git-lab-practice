@@ -60,3 +60,37 @@ test('채점 결과에서 제출로 이동하면 과정과 저장소를 이어�
   await expect(page.locator('#leaderboardRepo')).toHaveValue('https://github.com/alice/lab');
   await expect(page.locator('#leaderboardCourse')).toHaveValue('scenarios');
 });
+
+test('상세 결과에 미통과 이유와 배점을 표시하고 HTML을 실행하지 않는다', async ({ page }) => {
+  const checks = [10, 15, 15, 15, 15, 10, 10].map((points, i) => ({ name: `항목 ${i}`, points, state: i === 2 ? 'fail' : 'pass', detail: i === 2 ? 'README에 지정 문구를 추가하세요. <img src=x onerror=alert(1)>' : '확인 완료' }));
+  const board = { ...Core.emptyBoard(), entries: [entry(1, 'alice', 75, { assessment: { checkedAt: '2026-09-17T01:00:00Z', runId: 456, checks } })] };
+  await page.route(raw, route => route.fulfill({ json: board }));
+  await page.goto('/#leaderboard');
+  await page.getByRole('button', { name: 'alice 채점 상세', exact: true }).click();
+  await expect(page.locator('.leaderboard-check')).toHaveCount(7);
+  await expect(page.locator('.leaderboard-check.fail')).toContainText('미통과 · 항목 2 · 0 / 15점');
+  await expect(page.locator('.leaderboard-check.fail')).toContainText('README에 지정 문구');
+  await expect(page.locator('#leaderboardDetails img')).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.getByRole('button', { name: '상세 닫기', exact: true }).click();
+  await expect(page.locator('#leaderboardDetails')).toBeHidden();
+});
+test('이전 기록 안내와 본인 삭제 양식, 공개 동의 없이 제출 차단', async ({ page }) => {
+  await page.route(raw, route => route.fulfill({ json: data() }));
+  await page.goto('/#leaderboard');
+  await page.getByRole('button', { name: 'alice 채점 상세', exact: true }).click();
+  await expect(page.locator('#leaderboardDetails')).toContainText('이전 기록에는 항목별 결과가 없습니다');
+  await page.locator('#leaderboardRepo').fill('https://github.com/alice/lab');
+  await page.locator('#leaderboardSubmit').click();
+  expect(await page.locator('#leaderboardConsent').evaluate(e => e.checkValidity())).toBe(false);
+  await page.locator('#leaderboardConsent').check();
+  expect(await page.locator('#leaderboardConsent').evaluate(e => e.checkValidity())).toBe(true);
+  await page.locator('#leaderboardCourse').selectOption('scenarios');
+  await expect(page.locator('#leaderboardConsent')).not.toBeChecked();
+  const url = new URL(await page.locator('#leaderboardDelete').getAttribute('href'));
+  expect(url.searchParams.get('template')).toBe('leaderboard-delete.yml');
+  expect(url.searchParams.get('action')).toBe('delete');
+  expect(url.searchParams.get('course')).toBe('scenarios');
+  expect(url.searchParams.has('userId')).toBe(false);
+});

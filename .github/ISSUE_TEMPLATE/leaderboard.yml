@@ -20,3 +20,10 @@ body:
       placeholder: https://github.com/내계정/내저장소
     validations:
       required: true
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: 공개 동의
+      options:
+        - label: 사용자 이름, 저장소, 점수와 항목별 채점 결과의 공개에 동의합니다.
+          required: true

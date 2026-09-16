@@ -37,7 +37,7 @@ test('제출 이슈 작성자와 저장소 소유자를 연결하고 클라이�
 });
 test('초급은 서버 검증 가능한 90점만 합산하고 확인 불가를 게시하지 않는다', () => {
   const submission = parseIssue(issue());
-  const checks = [10, 15, 15, 15, 15, 10, 10].map(points => ({ points, state: 'pass' }));
+  const checks = [10, 15, 15, 15, 15, 10, 10].map((points, i) => ({ points, state: 'pass', name: `항목 ${i}`, detail: '확인 완료' }));
   const result = resultEntry(submission, checks, 123);
   assert.equal(result.score, 90); assert.equal(result.total, 7);
   checks[2].state = 'unknown'; assert.throws(() => resultEntry(submission, checks, 123), /확인 불가/);
@@ -77,4 +77,45 @@ test('GitHub 서버 요청은 고정 호스트만 쓰고 리다이렉트로 토�
   await client.request('/user');
   assert.equal(captured.url, 'https://api.github.com/user'); assert.equal(captured.options.redirect, 'error');
   await assert.rejects(client.request('//other.example/path'), /잘못된/);
+});
+
+test('상세 결과 합계와 상태를 검증하고 이전 최고 기록의 시각은 보존한다', () => {
+  const checks = [10, 15, 15, 15, 15, 10, 10].map((points, i) => ({ points, state: 'pass', name: `항목 ${i}`, detail: '확인 완료' }));
+  const candidate = resultEntry(parseIssue(issue()), checks, 456, '2026-09-17T01:00:00Z');
+  const board = boardWith([entry()]);
+  const enriched = Core.upsert(board, candidate);
+  assert.equal(enriched.entries[0].checkedAt, board.entries[0].checkedAt);
+  assert.equal(enriched.entries[0].runId, 123);
+  assert.equal(enriched.entries[0].assessment.runId, 456);
+  assert.deepEqual(enriched.entries[0].assessment.checks, checks);
+  assert.equal(Core.upsert(enriched, candidate), enriched);
+  assert.equal(Core.upsert(board, { ...candidate, repository: 'student/other' }), board);
+  const invalid = structuredClone(candidate); invalid.assessment.checks[0].state = 'fail';
+  assert.equal(Core.validEntry(invalid), false);
+  invalid.assessment.checks[0].state = 'unknown'; assert.equal(Core.validEntry(invalid), false);
+  assert.equal(Core.validEntry({ ...candidate, assessment: null }), false);
+});
+
+test('삭제 요청 작성자 본인의 해당 과정만 삭제하고 충돌 시 다른 기록을 보존한다', async () => {
+  const { parseDeletion, deleteRecord } = require('../lib/leaderboard-service');
+  const requestIssue = issue({ body: '### Action\n\ndelete\n\n### Course\n\nbasic\n' });
+  const deletion = parseDeletion(requestIssue);
+  let board = boardWith([entry(), entry({ userId: 2, login: 'other', repository: 'other/lab' }), entry({ course: 'scenarios', score: 325, maxScore: 325, passed: 20, total: 20 })]);
+  let writes = 0;
+  const client = { request: async (url, method, body) => {
+    if (url.endsWith('/issues/1')) return requestIssue;
+    if (method === 'PUT') {
+      if (++writes === 1) { board.entries.push(entry({ userId: 3, login: 'third', repository: 'third/lab' })); throw Object.assign(new Error('conflict'), {status:409}); }
+      board = JSON.parse(Buffer.from(body.content, 'base64').toString()); return {};
+    }
+    return { sha: 'sha', encoding: 'base64', content: Buffer.from(JSON.stringify(board)).toString('base64') };
+  } };
+  await assert.rejects(deleteRecord(client, { deletion: { ...deletion, userId: 2 } }), /변경/);
+  assert.equal(writes, 0);
+  assert.equal((await deleteRecord(client, { deletion })).changed, true);
+  assert.equal(board.entries.length, 3);
+  assert.equal(board.entries.some(e => e.userId === 1 && e.course === 'basic'), false);
+  assert.equal(board.entries.some(e => e.userId === 1 && e.course === 'scenarios'), true);
+  assert.equal((await deleteRecord(client, { deletion })).changed, false);
+  assert.throws(() => parseDeletion({ ...requestIssue, state: 'closed' }));
 });

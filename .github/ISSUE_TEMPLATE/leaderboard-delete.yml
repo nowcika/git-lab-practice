@@ -1,0 +1,22 @@
+name: 내 순위 기록 삭제
+description: 로그인한 본인 계정의 선택한 과정 기록을 삭제합니다.
+title: '[Leaderboard] 내 기록 삭제'
+body:
+  - type: markdown
+    attributes:
+      value: '이 이슈를 제출하면 로그인한 본인 계정의 해당 과정 기록을 순위표에서 삭제합니다. 다른 사람의 기록은 삭제할 수 없습니다. 공개 제출 이슈와 Git 이력은 남습니다. 진행 중인 채점이 있다면 완료 후 삭제해 주세요. 다시 등록하려면 새로 제출하세요.'
+  - type: input
+    id: action
+    attributes:
+      label: Action
+      value: delete
+    validations:
+      required: true
+  - type: input
+    id: course
+    attributes:
+      label: Course
+      description: '초급은 basic, 실전은 scenarios를 입력하세요.'
+      placeholder: basic
+    validations:
+      required: true

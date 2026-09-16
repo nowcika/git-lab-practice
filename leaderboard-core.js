@@ -16,6 +16,16 @@
     } catch { return null; }
   }
   function emptyBoard() { return { schemaVersion: 1, rulesVersion: RULES_VERSION, updatedAt: null, entries: [] }; }
+  function validAssessment(a, e, course) {
+    return Boolean(a && typeof a.checkedAt === 'string' && Number.isFinite(Date.parse(a.checkedAt))
+      && Number.isSafeInteger(a.runId) && a.runId > 0 && Array.isArray(a.checks) && a.checks.length === course.total
+      && a.checks.every(c => c && typeof c.name === 'string' && c.name.trim().length > 0 && c.name.length <= 300
+        && typeof c.detail === 'string' && c.detail.length <= 10000 && ['pass', 'fail'].includes(c.state)
+        && Number.isInteger(c.points) && c.points > 0)
+      && a.checks.reduce((sum, c) => sum + c.points, 0) === e.maxScore
+      && a.checks.reduce((sum, c) => sum + (c.state === 'pass' ? c.points : 0), 0) === e.score
+      && a.checks.filter(c => c.state === 'pass').length === e.passed);
+  }
   function validEntry(e) {
     const course = COURSES[e?.course];
     const repo = repositoryName(`https://github.com/${e?.repository}`);
@@ -25,7 +35,8 @@
       && Number.isInteger(e.passed) && e.passed >= 0 && e.passed <= course.total && e.total === course.total
       && typeof e.checkedAt === 'string' && Number.isFinite(Date.parse(e.checkedAt))
       && Number.isSafeInteger(e.issueNumber) && e.issueNumber > 0
-      && Number.isSafeInteger(e.runId) && e.runId > 0 && e.rulesVersion === RULES_VERSION);
+      && Number.isSafeInteger(e.runId) && e.runId > 0 && e.rulesVersion === RULES_VERSION
+      && (e.assessment === undefined || validAssessment(e.assessment, e, course)));
   }
   function validateBoard(board) {
     if (!board || board.schemaVersion !== 1 || board.rulesVersion !== RULES_VERSION || !Array.isArray(board.entries)
@@ -40,7 +51,16 @@
     const entries = board.entries.map(e => ({ ...e }));
     const index = entries.findIndex(e => e.course === candidate.course && e.userId === candidate.userId);
     if (index >= 0 && (entries[index].score > candidate.score || (entries[index].score === candidate.score
-      && Date.parse(entries[index].checkedAt) <= Date.parse(candidate.checkedAt)))) return board;
+      && Date.parse(entries[index].checkedAt) <= Date.parse(candidate.checkedAt)))) {
+      const previous = entries[index];
+      // Enrich legacy records without changing their original achievement or rank.
+      if (!previous.assessment && candidate.assessment && previous.score === candidate.score
+        && previous.passed === candidate.passed && previous.repository === candidate.repository) {
+        entries[index] = { ...previous, assessment: candidate.assessment };
+        return { ...board, updatedAt: new Date().toISOString(), entries };
+      }
+      return board;
+    }
     if (index >= 0) entries[index] = candidate; else entries.push(candidate);
     return { ...board, updatedAt: new Date().toISOString(), entries };
   }
