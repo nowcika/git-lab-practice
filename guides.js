@@ -92,6 +92,114 @@ const guides = [
   ]}
 ];
 
+const guideUsage = {
+  repo: [
+    ['git init', [
+      ['git init', '현재 폴더를 Git 저장소로 만듭니다. .git 폴더가 생깁니다.'],
+      ['git init -b main', '기본 브랜치 이름을 main으로 정하면서 초기화합니다.'],
+      ['git init <폴더>', '새 폴더를 만들면서 초기화합니다.'],
+      ['git init --bare', '작업 폴더 없이 공유용 저장소만 만듭니다. 서버에서 사용합니다.'],
+      ['git status', '초기화 후 가장 먼저 상태를 확인합니다.']
+    ]],
+    ['git remote / git push', [
+      ['git remote add origin <주소>', '원격 저장소를 origin이라는 이름으로 연결합니다.'],
+      ['git remote set-url origin <주소>', '주소를 잘못 넣었을 때 교체합니다.'],
+      ['git push -u origin main', '처음 push. -u는 이후 git push만으로 되도록 추적을 설정합니다.'],
+      ['git push', '추적이 설정된 뒤에는 이 한 줄이면 됩니다.'],
+      ['git push origin HEAD', '현재 브랜치를 같은 이름으로 올립니다. 이름 오타를 막아 줍니다.'],
+      ['git push --dry-run', '무엇이 올라갈지 미리 확인만 합니다.']
+    ]]
+  ],
+  readme: [
+    ['git add', [
+      ['git add README.md', '파일 하나만 다음 커밋에 담습니다. 가장 안전한 형태입니다.'],
+      ['git add .', '현재 폴더 아래 변경을 모두 담습니다. 의도치 않은 파일이 없는지 status로 확인하세요.'],
+      ['git add -p', '한 파일 안에서도 원하는 조각만 골라 담습니다.'],
+      ['git add -u', '이미 추적 중인 파일의 변경만 담습니다(새 파일 제외).'],
+      ['git restore --staged <파일>', '잘못 담은 파일을 스테이지에서 내립니다.']
+    ]],
+    ['확인용 명령', [
+      ['git status -s', '짧은 형식으로 상태를 봅니다. M=수정, A=추가, ??=미추적.'],
+      ['git diff --staged', '다음 커밋에 들어갈 내용을 미리 확인합니다.'],
+      ['git show HEAD:README.md', '마지막 커밋에 담긴 README 내용을 확인합니다.'],
+      ['git ls-files', '저장소가 추적 중인 파일 목록을 봅니다.']
+    ]]
+  ],
+  commits: [
+    ['git commit', [
+      ['git commit -m "메시지"', '한 줄 메시지로 커밋합니다.'],
+      ['git commit', '에디터를 열어 제목과 본문을 나눠 적습니다. 이유를 남길 때 권장합니다.'],
+      ['git commit -am "메시지"', '추적 중인 파일을 add와 동시에 커밋합니다(새 파일은 제외).'],
+      ['git commit --amend --no-edit', '방금 커밋에 빠뜨린 파일을 추가합니다.'],
+      ['git commit --allow-empty -m "trigger"', '변경 없이 커밋합니다. CI 재실행용이며 채점에서는 인정되지 않습니다.']
+    ]],
+    ['git log', [
+      ['git log --oneline -5', '최근 5개를 한 줄씩 봅니다.'],
+      ['git log --graph --oneline --all', '브랜치 갈라짐을 그림으로 봅니다.'],
+      ['git log -p <파일>', '그 파일의 변경 내용까지 함께 봅니다.'],
+      ['git log --author="이름"', '작성자로 걸러 봅니다.'],
+      ['git log --since="1 week ago"', '기간으로 걸러 봅니다.'],
+      ['git log --stat', '커밋마다 바뀐 파일과 줄 수를 요약합니다.']
+    ]]
+  ],
+  branch: [
+    ['브랜치 만들기와 이동', [
+      ['git switch -c practice/feature', '새 브랜치를 만들고 바로 이동합니다.'],
+      ['git switch main', '기존 브랜치로 이동합니다.'],
+      ['git switch -', '직전 브랜치로 되돌아갑니다.'],
+      ['git checkout -b <이름>', '예전 방식. switch -c와 같은 동작입니다.'],
+      ['git branch --show-current', '현재 브랜치 이름만 출력합니다. 스크립트에서 유용합니다.']
+    ]],
+    ['원격 브랜치 다루기', [
+      ['git push -u origin practice/feature', '로컬 브랜치를 원격에 만들고 추적을 설정합니다.'],
+      ['git branch -a', '로컬과 원격 브랜치를 모두 봅니다.'],
+      ['git branch -vv', '추적 중인 원격과 앞선/뒤처진 커밋 수를 봅니다.'],
+      ['git push origin --delete <이름>', '원격 브랜치를 삭제합니다.'],
+      ['git switch -c <이름> origin/<이름>', '원격에만 있는 브랜치를 내 PC로 가져옵니다.']
+    ]]
+  ],
+  issue: [
+    ['터미널에서 이슈 다루기 (gh)', [
+      ['gh issue create --title "학습 계획"', '브라우저 없이 이슈를 만듭니다.'],
+      ['gh issue list', '열린 이슈 목록을 봅니다. --state all 로 닫힌 것까지 봅니다.'],
+      ['gh issue view 1', '이슈 내용을 터미널에서 확인합니다.'],
+      ['gh issue close 1 / reopen 1', '닫기와 다시 열기.'],
+      ['gh issue comment 1 --body "진행 중"', '댓글을 남깁니다.']
+    ]],
+    ['커밋과 이슈 연결', [
+      ['커밋 메시지에 #1', '해당 이슈에 커밋이 자동으로 연결됩니다.'],
+      ['"Closes #1"', 'PR이 병합될 때 이슈가 자동으로 닫힙니다.'],
+      ['라벨과 마일스톤', '이슈를 분류해 진행 상황을 관리합니다.'],
+      ['템플릿(.github/ISSUE_TEMPLATE)', '이슈 작성 양식을 미리 정해 둘 수 있습니다.']
+    ]]
+  ],
+  pr: [
+    ['터미널에서 PR 다루기 (gh)', [
+      ['gh pr create --base main --head practice/feature', '브라우저 없이 PR을 만듭니다.'],
+      ['gh pr create --fill', '커밋 메시지로 제목과 본문을 자동으로 채웁니다.'],
+      ['gh pr list / gh pr view --web', '목록 확인과 브라우저로 열기.'],
+      ['gh pr checkout 2', '남의 PR 브랜치를 내 PC로 받아 확인합니다.'],
+      ['gh pr merge 2 --squash', '병합 방식을 골라 병합합니다.']
+    ]],
+    ['PR 전에 확인할 것', [
+      ['git diff main...practice/feature', 'PR 화면과 같은 기준으로 변경을 미리 봅니다.'],
+      ['git log main..practice/feature', 'PR에 들어갈 커밋 목록을 확인합니다.'],
+      ['git fetch origin && git rebase origin/main', '최신 main 위로 정리해 충돌을 줄입니다.'],
+      ['git push --force-with-lease', 'rebase 후 안전하게 다시 올립니다.']
+    ]]
+  ]
+};
+
+function guideUsageHtml(id) {
+  const usage = guideUsage[id];
+  if (!usage) return '';
+  const escape = (value) => String(value).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+  const groups = usage.map(([name, cases]) => `<div class="usage-group"><h5>${escape(name)}</h5><dl>${
+    cases.map(([code, note]) => `<dt><code>${escape(code)}</code></dt><dd>${escape(note)}</dd>`).join('')
+  }</dl></div>`).join('');
+  return `<details class="usage"><summary>명령어 활용 사례 — 상황에 따라 이렇게 바꿔 씁니다</summary><div class="usage-body">${groups}</div></details>`;
+}
+
 const guideRoot = document.getElementById('guides');
 if (guideRoot) {
   guideRoot.innerHTML = `<section class="example-section"><div class="example-title"><div><span class="eyebrow">COMPLETED EXAMPLE</span><h3>완성된 예제로 먼저 확인하세요</h3><p>실제 공개 저장소에 모든 과제를 수행했습니다. 화면의 번호와 아래 설명을 함께 확인하세요.</p></div><a class="example-link" href="https://github.com/nowcika/git-lab-example" target="_blank" rel="noopener noreferrer">예제 저장소 열기 ↗</a></div>
@@ -100,7 +208,7 @@ if (guideRoot) {
   <div class="example-subgrid"><a href="https://github.com/nowcika/git-lab-example/issues/1" target="_blank" rel="noopener noreferrer"><img src="assets/example-issue.png" alt="학습 계획 예제 이슈 화면"><strong>예제 이슈 #1 확인 ↗</strong><small>제목의 ‘학습 계획’ 문구를 확인하세요.</small></a><a href="https://github.com/nowcika/git-lab-example/pull/2" target="_blank" rel="noopener noreferrer"><img src="assets/example-pr.png" alt="practice feature 예제 Pull Request 화면"><strong>예제 Pull Request #2 확인 ↗</strong><small>base: main ← compare: practice/feature 방향을 확인하세요.</small></a></div>
   <p class="capture-note">캡처는 2026년 9월 기준 실제 GitHub 공개 화면입니다. GitHub 화면 개편에 따라 버튼 위치는 달라질 수 있으므로, 위 예제 저장소 링크에서 최신 상태를 함께 확인하세요.</p></section><div class="guide-heading"><h3>과제별 실행 가이드</h3><p>과정을 따라 하고, 막히면 ‘안될 때 확인’을 살펴보세요.</p></div><div class="guide-list">${guides.map(g => `
     <details class="guide" id="guide-${g.id}"><summary><span>${g.no}</span><strong>${g.title}</strong><small>${g.sub}</small></summary>
-    <div class="guide-body"><div><h4>따라 하기</h4><ol>${g.steps.map(x=>`<li>${x}</li>`).join('')}</ol>${g.cmd ? `<pre><code>${g.cmd}</code><button class="copy-block" type="button">전체 복사</button></pre>` : ''}<p class="guide-success">✓ 성공 기준: ${g.success}</p></div>
+    <div class="guide-body"><div><h4>따라 하기</h4><ol>${g.steps.map(x=>`<li>${x}</li>`).join('')}</ol>${g.cmd ? `<pre><code>${g.cmd}</code><button class="copy-block" type="button">전체 복사</button></pre>` : ''}<p class="guide-success">✓ 성공 기준: ${g.success}</p>${guideUsageHtml(g.id)}</div>
     <div class="trouble"><h4>안될 때 확인</h4><ul>${g.trouble.map(x=>`<li>${x}</li>`).join('')}</ul></div></div></details>`).join('')}</div>`;
   guideRoot.querySelectorAll('.copy-block').forEach(button => button.addEventListener('click', async () => {
     const value = button.previousElementSibling.textContent;

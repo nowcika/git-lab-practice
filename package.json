@@ -1,16 +1,17 @@
 {
-  "name": "git_test",
+  "name": "git-lab-practice",
   "version": "1.0.0",
-  "description": "Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안내, 여섯 가지 실습 과제, 공개 GitHub 저장소 자동 채점, JSON 결과 다운로드를 제공합니다.",
-  "main": "app.js",
+  "description": "Git과 GitHub 교육을 위한 정적 웹페이지입니다. 설치·가입 안내, 여섯 가지 실습 과제, 열여덟 가지 실전 시나리오, 명령어 활용 사례, 공개 GitHub 저장소 자동 채점, 로컬 저장소 검증기를 제공합니다.",
+  "main": "lib/local-grader.js",
   "scripts": {
+    "serve": "node bin/static-server.js 4173",
     "test": "npm run test:local && PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test",
-    "test:scenario": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test tests/scenario-api.spec.js",
-    "test:ui": "playwright test tests/scenario-ui.spec.js --project=chromium",
-    "test:ui:headed": "playwright test tests/scenario-ui.spec.js --project=chromium --headed",
-    "report": "playwright show-report",
-    "grade:local": "node bin/grade-local.js",
-    "test:local": "node --test tests/local-grader.test.cjs"
+    "test:local": "node --test tests/local-grader.test.cjs",
+    "test:scenario": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test --project=api",
+    "test:ui": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test --project=chromium",
+    "test:ui:headed": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test --project=chromium --headed",
+    "report": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js show-report",
+    "grade:local": "node bin/grade-local.js"
   },
   "repository": {
     "type": "git",
@@ -26,5 +27,8 @@
   "homepage": "https://github.com/nowcika/git-lab-practice#readme",
   "devDependencies": {
     "@playwright/test": "^1.63.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

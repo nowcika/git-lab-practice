@@ -34,7 +34,7 @@ test('초급 정상 100점 및 작업 트리/HEAD/index 보존', async t => {
   const f = fixture(t); f.write('uncommitted.txt', 'leave alone');
   const before = [f.git('status', '--porcelain'), f.git('rev-parse', 'HEAD'), f.git('write-tree')];
   const r = await grade(f.options, { github: f.github });
-  assert.equal(r.score, 100); assert.deepEqual(r.summary, { pass: 8, fail: 0, unknown: 0 });
+  assert.equal(r.score, 100); assert.deepEqual(r.summary, { pass: 8, fail: 0, unknown: 0, offlineSkipped: 0, blocked: 0 });
   assert.equal(r.diagnostics[0].clean, false);
   assert.deepEqual([f.git('status', '--porcelain'), f.git('rev-parse', 'HEAD'), f.git('write-tree')], before);
   assert.equal(item(r, 'readme').evidence.main.push, 'matched');
@@ -60,11 +60,27 @@ test('계정/origin/소유자/공개 설정 불일치는 실패', async t => {
 });
 test('API 오류는 확인 불가', async t => {
   const f = fixture(t); f.github.get = async () => { throw new Unavailable('HTTP 403'); };
-  const r = await grade(f.options, { github: f.github }); assert.deepEqual(r.summary, { pass: 1, fail: 0, unknown: 7 }); assert.equal(r.complete, false);
+  const r = await grade(f.options, { github: f.github }); assert.deepEqual(r.summary, { pass: 1, fail: 0, unknown: 7, offlineSkipped: 0, blocked: 7 }); assert.equal(r.complete, false);
 });
 test('오프라인은 네트워크 없이 55점과 4개 확인 불가', async t => {
   const f = fixture(t); f.github.get = () => { throw new Error('network should not run'); };
   const r = await grade({ ...f.options, offline: true }, { github: f.github }); assert.equal(r.score, 55); assert.equal(r.summary.unknown, 4);
+  // 오프라인 때문에 보류된 항목은 종료 코드 계산에서 제외됩니다.
+  assert.equal(r.summary.offlineSkipped, 4); assert.equal(r.summary.blocked, 0);
+});
+
+test('신뢰할 수 없는 저장소는 항목별 사유를 남긴다', async t => {
+  const f = fixture(t); f.metadata.private = true;
+  const r = await grade(f.options, { github: f.github });
+  assert.match(item(r, 'repository').detail, /비공개 저장소/);
+  assert.match(item(r, 'issue').detail, /비공개 저장소/);
+});
+
+test('--branch를 지정하면 GitHub 기본 브랜치보다 우선한다', async t => {
+  const f = fixture(t); f.git('branch', '-m', 'main', 'develop'); f.metadata.default_branch = 'main';
+  const r = await grade({ ...f.options, branch: 'develop' }, { github: f.github });
+  assert.equal(item(r, 'commits').state, 'pass');
+  assert.equal(item(r, 'readme').evidence.develop.push, 'matched');
 });
 test('다른 Fork PR과 이슈로 위장한 PR은 불인정', async t => {
   const f = fixture(t); const get = f.github.get;
@@ -111,10 +127,14 @@ test('원본 Fork가 아니면 로컬 정답이 있어도 온라인 시나리오
 test('CLI JSON, 종료 코드, 기존 파일 덮어쓰기 방지', t => {
   const f = fixture(t); const output = path.join(f.dir, 'result.json'); const cli = path.resolve(__dirname, '../bin/grade-local.js');
   const args = [cli, '--repo', f.dir, '--username', 'student', '--offline', '--json', output];
-  const first = spawnSync(process.execPath, args, { encoding: 'utf8' }); assert.equal(first.status, 2); assert.equal(JSON.parse(fs.readFileSync(output)).score, 55);
+  // 오프라인 보류 항목만 남으면 종료 코드는 0입니다(실패 항목이 없기 때문).
+  const first = spawnSync(process.execPath, args, { encoding: 'utf8' }); assert.equal(first.status, 0); assert.equal(JSON.parse(fs.readFileSync(output)).score, 55);
   const before = fs.readFileSync(output, 'utf8'); const second = spawnSync(process.execPath, args, { encoding: 'utf8' });
   assert.equal(second.status, 2); assert.match(second.stderr, /이미 있습니다/); assert.equal(fs.readFileSync(output, 'utf8'), before);
   assert.equal(spawnSync(process.execPath, [cli, '--help']).status, 0); assert.equal(spawnSync(process.execPath, [cli, '--unknown']).status, 2);
+  // --repo를 빼면 현재 폴더를 조용히 채점하지 않고 오류로 멈춥니다.
+  const noRepo = spawnSync(process.execPath, [cli, '--offline'], { encoding: 'utf8' });
+  assert.equal(noRepo.status, 2); assert.match(noRepo.stderr, /--repo/);
 });
 test('GitHub remote 형식 검사', () => {
   for (const value of ['https://github.com/student/lab.git', 'git@github.com:student/lab.git', 'ssh://git@github.com/student/lab.git']) assert.equal(parseGitHub(value), 'student/lab');
