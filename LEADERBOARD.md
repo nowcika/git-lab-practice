@@ -81,7 +81,8 @@ GitHub Actions 화면에서 `Public leaderboard → Run workflow`를 실행할 �
 | `window.lastBasicReport` | `app.js`의 `render()` | `{ score, results:[{ name, points, state, detail }] }` · 서버는 첫 항목(설치 출력)을 제외한 7개를 사용 |
 | `window.lastScenarioReport` | `scenarios.js`의 `renderScenarioResults()` | `{ score, results:[{ name, points, state, detail }] }` · 20개 항목 |
 
-`tests/basic-ui.spec.js`의 **공개 순위표 서버 검증이 읽는 채점 결과 계약이 유지된다**
-테스트가 항목 수와 배점 합계까지 확인합니다. 채점 항목 수나 배점을 바꾸면
+`tests/basic-ui.spec.js`의 초급 PR 검증 테스트는 모의 GitHub 응답을 사용해 실제 채점 버튼을
+실행하고, 설치 출력을 제외한 7개 항목·배점 합계 90점과 결과 필드를 확인합니다.
+별도의 실전 결과 계약 테스트는 20개 항목·배점 합계 325점을 확인합니다. 채점 항목 수나 배점을 바꾸면
 `leaderboard-core.js`의 `COURSES`(초급 90점 7항목, 실전 325점 20항목)도 함께
 맞춰야 하며, 기존 점수와 비교가 불가능해지면 `RULES_VERSION`을 올리세요.

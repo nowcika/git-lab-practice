@@ -166,24 +166,35 @@ test('초급 채점은 병합된 PR의 현재 브랜치 SHA와 실제 커밋을 
   await page.locator('#gradeButton').click();
   await expect(page.locator('#resultList .result-mark.pass')).toHaveCount(8);
   await expect(page.locator('#scoreRingText')).toHaveText('100%');
+  // 서버와 같은 입력으로 실제 채점 경로를 거쳐 공개 결과 계약을 검증합니다.
+  await page.locator('#gitVersion').fill('');
+  await page.locator('#gradeButton').click();
+  await expect(page.locator('#gradeButton')).toBeEnabled();
+  const basic = await page.evaluate(() => window.lastBasicReport);
+  expect(basic.score).toBe(90);
+  expect(basic.results).toHaveLength(8);
+  expect(basic.results[0]).toMatchObject({ points: 10, state: 'fail' });
+  const publicChecks = basic.results.slice(1);
+  expect(publicChecks).toHaveLength(7);
+  expect(publicChecks.map(check => check.points)).toEqual([10, 15, 15, 15, 15, 10, 10]);
+  expect(publicChecks.reduce((sum, check) => sum + check.points, 0)).toBe(90);
+  for (const check of publicChecks) {
+    expect(check.state).toBe('pass');
+    expect(typeof check.name).toBe('string');
+    expect(check.name.trim().length).toBeGreaterThan(0);
+    expect(typeof check.detail).toBe('string');
+    expect(check.detail.trim().length).toBeGreaterThan(0);
+  }
+  await page.locator('#gitVersion').fill('git version 2.48.1');
   submitted = 'b'.repeat(40);
   await page.locator('#gradeButton').click();
   await expect(page.locator('#resultList .result-mark.fail')).toHaveCount(1);
   await expect(page.locator('#scoreRingText')).toHaveText('85%');
 });
 
-test('공개 순위표 서버 검증이 읽는 채점 결과 계약이 유지된다', async ({ page }) => {
-  // lib/leaderboard-grader.js가 window.lastBasicReport / window.lastScenarioReport를 읽습니다.
-  // 이름이나 형태가 바뀌면 Actions에서만 조용히 깨지므로 여기서 계약을 고정합니다.
+test('공개 순위표 서버 검증이 읽는 실전 채점 결과 계약이 유지된다', async ({ page }) => {
+  // 초급 계약은 위의 실제 채점 테스트에서 검증합니다.
   await page.goto('/');
-  const shape = await page.evaluate(() => {
-    const report = { score: 12, results: [{ name: 'x', points: 12, state: 'pass', detail: 'ok' }] };
-    render({ ...report, checkedAt: '방금', results: report.results });
-    return { keys: Object.keys(window.lastBasicReport || {}), first: window.lastBasicReport?.results?.[0] };
-  });
-  expect(shape.keys).toEqual(expect.arrayContaining(['score', 'results']));
-  expect(shape.first).toMatchObject({ name: 'x', points: 12, state: 'pass', detail: 'ok' });
-
   const scenario = await page.evaluate(() => {
     renderScenarioResults(scenarioDefinitions.map(() => ({ state: 'fail', detail: '미통과' })), 0);
     const results = window.lastScenarioReport?.results || [];

@@ -91,9 +91,13 @@ npm run leaderboard:smoke  # 공개 예제를 서버 방식으로 재채점 (게
 
 `leaderboard:smoke`는 `gh auth login` 또는 `GH_TOKEN`을 사용하며 결과를
 `test-results/leaderboard-verified.json`에 남깁니다. **점검 결과는 순위표에 게시되지
-않습니다.** 실제 등록 흐름을 점검하려면 GitHub Actions의 `Public leaderboard →
-Run workflow`에서 이슈 번호를 비운 채 실행하세요. 테스트용 제출 이슈를 만들어 순위에
-올리지 말고, 처리가 끝난 이슈는 닫아 두세요. 자세한 내용은 `LEADERBOARD.md`에 있습니다.
+않습니다.** GitHub Actions에서도 `Public leaderboard → Run workflow`에서 이슈 번호를
+비우면 게시 없는 재채점 점검만 실행합니다. 이 방식은 점수 저장·순위표 반영을 검증하지 않습니다.
+
+실제 등록 흐름은 공개 등록에 동의한 참가자의 제출 이슈로 확인합니다. 이미 제출된 열린 이슈를
+재검사하려면 `Run workflow`에 해당 이슈 번호를 입력하고, 검증·게시 작업의 성공 및
+순위표 반영을 확인하세요. 테스트용 제출 이슈를 임의로 만들어 순위에 올리지 말고,
+처리가 끝난 이슈는 닫아 두세요. 자세한 내용은 `LEADERBOARD.md`에 있습니다.
 
 ## 실패 시 확인
 
