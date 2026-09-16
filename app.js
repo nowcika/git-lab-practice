@@ -3,11 +3,16 @@ const $ = (id) => document.getElementById(id);
 const fields = ['gitVersion', 'username', 'repoUrl'];
 const guideIds = ['install', 'account', 'repo', 'readme', 'commits', 'branch', 'issue', 'pr'];
 const labels = [
-  ['Git 설치 출력', 10], ['GitHub 계정', 10], ['공개 저장소', 15],
-  ['README와 지정 문구', 15], ['기본 브랜치 커밋 2개', 15],
-  ['practice/feature 브랜치', 15], ['학습 계획 이슈', 10],
-  ['practice/feature PR', 10]
+  ['Git 설치 출력', 10], ['GitHub 계정', 10], ['직접 만든 공개 저장소', 15],
+  ['README와 지정 문구', 15], ['로컬에서 push한 커밋 2개', 15],
+  ['practice/feature 브랜치와 변경', 15], ['내가 만든 학습 계획 이슈', 10],
+  ['내가 만든 practice/feature PR', 10]
 ];
+
+// GitHub 웹 편집기·API로 만든 커밋은 committer가 항상 GitHub <noreply@github.com>입니다.
+// 터미널에서 git으로 push한 커밋과 구분하는 데 사용합니다.
+const madeOnWeb = (commit) => commit?.commit?.committer?.email === 'noreply@github.com'
+  && commit?.commit?.committer?.name === 'GitHub';
 let lastReport = null;
 
 // 선택 입력한 토큰은 탭을 닫으면 사라지는 sessionStorage에만 둡니다(localStorage 금지).
@@ -170,6 +175,7 @@ async function grade() {
       if (data.missing) return failed('저장소를 찾지 못했습니다. 공개 설정과 URL을 확인하세요.');
       if (data.private) return failed('공개 저장소로 설정하세요.');
       if (data.owner?.login?.toLowerCase() !== username.toLowerCase()) return failed('입력한 사용자 계정이 소유한 저장소를 입력하세요.');
+      if (data.fork) return failed('Fork한 저장소는 인정하지 않습니다. 직접 새로 만든 저장소를 사용하세요.');
       defaultBranch = data.default_branch || 'main';
       return passed(`공개 저장소 확인: ${data.full_name}`);
     });
@@ -187,24 +193,37 @@ async function grade() {
             : failed(`README.md에 ${marker} 문구를 추가하세요.`);
         },
         async () => {
-          const data = await api(`${base}/commits?per_page=10`);
+          const data = await api(`${base}/commits?per_page=20`);
           if (data.missing || !Array.isArray(data)) return failed('기본 브랜치의 커밋을 확인할 수 없습니다.');
           if (data.length < 2) return failed('기본 브랜치에 서로 다른 변경을 두 번 커밋하고 푸시하세요.');
           // 빈 커밋으로 개수만 늘린 제출을 막기 위해 커밋이 가리키는 트리가 서로 다른지 확인합니다.
           const trees = new Set(data.map(c => c.commit?.tree?.sha).filter(Boolean));
-          return trees.size >= 2
-            ? passed(`기본 브랜치에서 서로 다른 내용의 커밋 ${data.length}개 확인`)
-            : failed('커밋은 2개지만 파일 내용이 바뀌지 않았습니다. 실제 변경을 담아 다시 커밋하세요.');
+          if (trees.size < 2) return failed('커밋은 2개지만 파일 내용이 바뀌지 않았습니다. 실제 변경을 담아 다시 커밋하세요.');
+          // 이 과정의 목적은 로컬 Git 사용입니다. 웹 편집기로만 만든 커밋은 인정하지 않습니다.
+          const local = data.filter(c => !madeOnWeb(c));
+          if (local.length < 2) {
+            return failed(`GitHub 웹 편집기로 만든 커밋만 있습니다(로컬 커밋 ${local.length}개). 터미널에서 git commit 후 git push로 두 번 올리세요.`);
+          }
+          return passed(`로컬에서 push한 커밋 ${local.length}개 확인 (서로 다른 내용)`);
         },
         async () => {
-          const data = await api(`${base}/branches/${encodeURIComponent('practice/feature')}`);
-          return data.missing ? failed('practice/feature 브랜치를 GitHub에 푸시하세요.') : passed('practice/feature 브랜치 확인');
+          // compare는 브랜치 존재 여부와 "앞선 커밋 수"를 한 번에 알려 줍니다.
+          const data = await api(`${base}/compare/${encodeURIComponent(defaultBranch)}...${encodeURIComponent('practice/feature')}`);
+          if (data.missing) return failed('practice/feature 브랜치를 GitHub에 푸시하세요.');
+          if (!(data.ahead_by > 0)) return failed('practice/feature가 기본 브랜치와 같습니다. 브랜치에서 파일을 수정해 커밋하고 푸시하세요.');
+          const local = (data.commits || []).filter(c => !madeOnWeb(c));
+          if (!local.length) return failed('practice/feature의 커밋이 웹 편집기로 만들어졌습니다. 터미널에서 커밋해 푸시하세요.');
+          return passed(`practice/feature가 기본 브랜치보다 ${data.ahead_by}커밋 앞섬`);
         },
         async () => {
           const data = await api(`${base}/issues?state=all&per_page=100`);
           if (data.missing || !Array.isArray(data)) return failed('이슈를 확인할 수 없습니다.');
-          const item = data.find(issue => !issue.pull_request && issue.title.includes('학습 계획'));
+          const item = data.find(issue => !issue.pull_request && issue.title.includes('학습 계획')
+            && issue.user?.login?.toLowerCase() === username.toLowerCase());
           if (item) return passed(`이슈 #${item.number}: ${item.title}`);
+          if (data.some(issue => !issue.pull_request && issue.title.includes('학습 계획'))) {
+            return failed('제목은 맞지만 다른 계정이 만든 이슈입니다. 본인 계정으로 이슈를 만드세요.');
+          }
           return data.length >= 100
             ? unknown('최근 이슈 100개에서 찾지 못했습니다. 실습용 새 저장소를 사용하세요.')
             : failed('제목에 ‘학습 계획’이 들어간 이슈를 만드세요.');
@@ -213,8 +232,12 @@ async function grade() {
           const data = await api(`${base}/pulls?state=all&per_page=100`);
           if (data.missing || !Array.isArray(data)) return failed('PR을 확인할 수 없습니다.');
           const item = data.find(pr => pr.head?.ref === 'practice/feature' && pr.base?.ref === defaultBranch
-            && pr.head?.repo?.full_name?.toLowerCase() === `${parsed.owner}/${parsed.name}`.toLowerCase());
+            && pr.head?.repo?.full_name?.toLowerCase() === `${parsed.owner}/${parsed.name}`.toLowerCase()
+            && pr.user?.login?.toLowerCase() === username.toLowerCase());
           if (item) return passed(`PR #${item.number}: ${item.title}`);
+          if (data.some(pr => pr.head?.ref === 'practice/feature' && pr.base?.ref === defaultBranch)) {
+            return failed('방향은 맞지만 다른 계정이 만들었거나 다른 저장소의 브랜치에서 온 PR입니다.');
+          }
           return data.length >= 100
             ? unknown('최근 PR 100개에서 찾지 못했습니다. 실습용 새 저장소를 사용하세요.')
             : failed('practice/feature에서 기본 브랜치로 PR을 만드세요.');

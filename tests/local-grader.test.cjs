@@ -14,8 +14,12 @@ function fixture(t) {
   git('init', '-b', 'main'); git('config', 'user.name', 'Test Student'); git('config', 'user.email', 'student@example.invalid');
   git('remote', 'add', 'origin', 'https://github.com/student/lab.git');
   write('README.md', '# git-lab-student\n'); commit('docs: learning goal');
-  write('notes.txt', 'second change'); commit('docs: second change'); git('branch', 'practice/feature');
-  const metadata = { full_name: 'student/lab', owner: { login: 'student' }, private: false, default_branch: 'main', fork: true, parent: { full_name: 'nowcika/git-scenario-lab' } };
+  write('notes.txt', 'second change'); commit('docs: second change');
+  // practice/feature는 기본 브랜치보다 최소 한 커밋 앞서야 합니다.
+  git('switch', '-c', 'practice/feature');
+  write('feature.txt', 'practice work'); commit('feat: add practice note');
+  git('switch', 'main');
+  const metadata = { full_name: 'student/lab', owner: { login: 'student' }, private: false, default_branch: 'main', fork: false, parent: { full_name: 'nowcika/git-scenario-lab' } };
   const github = new GitHub();
   github.get = async endpoint => {
     if (endpoint === '/user') return { login: 'student' };
@@ -23,8 +27,8 @@ function fixture(t) {
     if (endpoint.includes('/branches/')) {
       try { return { commit: { sha: git('rev-parse', `refs/heads/${decodeURIComponent(endpoint.split('/branches/')[1])}`) } }; } catch { return null; }
     }
-    if (endpoint.includes('/issues?')) return [{ number: 1, title: '학습 계획' }];
-    if (endpoint.includes('/pulls?')) return [{ number: 2, head: { ref: 'practice/feature', repo: { full_name: 'student/lab' } }, base: { ref: 'main', repo: { full_name: 'student/lab' } } }];
+    if (endpoint.includes('/issues?')) return [{ number: 1, title: '학습 계획', user: { login: 'student' } }];
+    if (endpoint.includes('/pulls?')) return [{ number: 2, user: { login: 'student' }, head: { ref: 'practice/feature', repo: { full_name: 'student/lab' } }, base: { ref: 'main', repo: { full_name: 'student/lab' } } }];
     return null;
   };
   return { dir, git, write, commit, github, metadata, options: { repo: dir, username: 'student' } };
@@ -84,9 +88,50 @@ test('--branch를 지정하면 GitHub 기본 브랜치보다 우선한다', asyn
 });
 test('다른 Fork PR과 이슈로 위장한 PR은 불인정', async t => {
   const f = fixture(t); const get = f.github.get;
-  f.github.get = endpoint => endpoint.includes('/pulls?') ? [{ head: { ref: 'practice/feature', repo: { full_name: 'other/lab' } }, base: { ref: 'main', repo: { full_name: 'student/lab' } } }] : endpoint.includes('/issues?') ? [{ title: '학습 계획', pull_request: {} }] : get(endpoint);
+  f.github.get = endpoint => endpoint.includes('/pulls?') ? [{ user: { login: 'student' }, head: { ref: 'practice/feature', repo: { full_name: 'other/lab' } }, base: { ref: 'main', repo: { full_name: 'student/lab' } } }] : endpoint.includes('/issues?') ? [{ title: '학습 계획', pull_request: {}, user: { login: 'student' } }] : get(endpoint);
   const r = await grade(f.options, { github: f.github }); assert.equal(r.score, 80);
 });
+test('웹 편집기로만 만든 커밋은 초급 커밋 점수를 얻지 못한다', async t => {
+  const f = fixture(t);
+  const web = (...args) => f.git('-c', 'commit.gpgsign=false', '-c', 'user.name=GitHub', '-c', 'user.email=noreply@github.com', ...args);
+  f.git('checkout', '--orphan', 'web-only'); f.git('rm', '-rf', '.');
+  f.write('README.md', 'git-lab-student'); f.git('add', '.'); web('commit', '-m', 'Create README.md');
+  f.write('notes.txt', 'web edit'); f.git('add', '.'); web('commit', '-m', 'Update notes.txt');
+  f.git('branch', '-f', 'main');
+  const r = await grade(f.options, { github: f.github });
+  assert.equal(item(r, 'commits').state, 'fail');
+  assert.match(item(r, 'commits').detail, /웹 편집기/);
+  assert.equal(item(r, 'commits').evidence.localCommits, 0);
+});
+
+test('Fork한 저장소는 초급 저장소 점수를 얻지 못한다', async t => {
+  const f = fixture(t); f.metadata.fork = true;
+  const r = await grade(f.options, { github: f.github });
+  assert.equal(item(r, 'repository').state, 'fail');
+  assert.match(item(r, 'repository').detail, /Fork한 저장소/);
+});
+
+test('practice/feature가 기본 브랜치와 같으면 실패한다', async t => {
+  const f = fixture(t);
+  f.git('branch', '-f', 'practice/feature', 'main');
+  const r = await grade(f.options, { github: f.github });
+  assert.equal(item(r, 'branch').state, 'fail');
+  assert.match(item(r, 'branch').detail, /기본 브랜치와 같습니다/);
+});
+
+test('다른 계정이 만든 이슈와 PR은 인정하지 않는다', async t => {
+  const f = fixture(t); const get = f.github.get;
+  f.github.get = endpoint => endpoint.includes('/issues?')
+    ? [{ number: 1, title: '학습 계획', user: { login: 'other' } }]
+    : endpoint.includes('/pulls?')
+      ? [{ number: 2, user: { login: 'other' }, head: { ref: 'practice/feature', repo: { full_name: 'student/lab' } }, base: { ref: 'main', repo: { full_name: 'student/lab' } } }]
+      : get(endpoint);
+  const r = await grade(f.options, { github: f.github });
+  assert.equal(item(r, 'issue').state, 'fail');
+  assert.equal(item(r, 'pr').state, 'fail');
+  assert.equal(r.score, 80);
+});
+
 test('목록 페이지 순회 및 1,000개 초과 보류', async () => {
   const gh = new GitHub(); let calls = 0;
   gh.get = async () => ++calls === 1 ? Array(100).fill({ title: 'other' }) : [{ title: 'target' }];
@@ -115,7 +160,7 @@ test('conflict 문구 복사만 실패, merge 이력 포함 통과', async t => 
   r = await grade({ ...f.options, course: 'scenarios', offline: true }); assert.equal(item(r, 'conflict').state, 'pass');
 });
 test('주석 태그는 실제 커밋 SHA로 비교하고 전체 배점은 325점', async t => {
-  const f = fixture(t); f.git('-c', 'tag.gpgsign=false', 'tag', '-a', 'solution-v1.0.0', '-m', 'done');
+  const f = fixture(t); f.metadata.fork = true; f.git('-c', 'tag.gpgsign=false', 'tag', '-a', 'solution-v1.0.0', '-m', 'done');
   const get = f.github.get; const sha = f.git('rev-parse', 'HEAD');
   f.github.get = endpoint => endpoint.includes('/git/ref/tags/') ? { object: { type: 'tag', sha: 'tag-object' } } : endpoint.endsWith('/git/tags/tag-object') ? { object: { type: 'commit', sha } } : get(endpoint);
   const r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github }); assert.equal(item(r, 'tag').state, 'pass'); assert.equal(r.results.reduce((s, x) => s + x.points, 0), 325);
@@ -211,7 +256,7 @@ test('release 태그는 workflow를 포함한 커밋을 가리켜야 한다', as
 });
 
 test('Pages는 브랜치 배포와 Actions 배포를 모두 인정한다', async t => {
-  const f = fixture(t);
+  const f = fixture(t); f.metadata.fork = true;
   f.write('docs/index.html', '<h1>PAGES-LIVE-2026</h1>'); f.commit('feat: publish homepage'); f.git('branch', 'solution/pages');
   const live = { status: 200, ok: true, text: async () => 'PAGES-LIVE-2026' };
   let r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github, fetch: async () => live });
@@ -297,7 +342,7 @@ test('빈 커밋으로 수만 늘린 제출은 커밋 점수를 얻지 못한다
   assert.equal(item(r, 'commits').state, 'fail'); assert.equal(item(r, 'commits').evidence.distinctTrees, 1);
 });
 test('Pages의 서버 오류는 확인 불가, 정상 응답의 틀린 내용은 실패', async t => {
-  const f = fixture(t); f.write('docs/index.html', 'PAGES-LIVE-2026'); f.commit('pages'); f.git('branch', 'solution/pages');
+  const f = fixture(t); f.metadata.fork = true; f.write('docs/index.html', 'PAGES-LIVE-2026'); f.commit('pages'); f.git('branch', 'solution/pages');
   let r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github, fetch: async () => ({ status: 503, ok: false }) });
   assert.equal(item(r, 'pages').state, 'unknown');
   r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github, fetch: async () => ({ status: 200, ok: true, text: async () => 'wrong website' }) });

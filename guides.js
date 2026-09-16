@@ -38,7 +38,8 @@ const guides = [
     '<code>src refspec main does not match any</code>: 첫 커밋이 없는지 <code>git log -1</code>로 확인하세요.',
     '<code>remote origin already exists</code>: <code>git remote -v</code>로 주소를 확인하고, 틀렸으면 <code>git remote set-url origin URL</code>로 고칩니다.',
     '<code>non-fast-forward</code>: GitHub에서 README를 자동 생성했다면 원격에 이미 커밋이 있습니다. 기존 저장소를 clone해 작업하거나 원격 변경을 먼저 가져오세요.',
-    '404 또는 0점: URL 오타, Private 설정, 다른 계정 소유 여부를 확인하세요.'
+    '404 또는 0점: URL 오타, Private 설정, 다른 계정 소유 여부를 확인하세요.',
+    'Fork한 저장소는 인정하지 않습니다. <strong>New repository</strong>로 직접 만든 저장소를 사용하세요.'
   ]},
   { id:'readme', no:'02', title:'README에 학습 목표 기록하기', sub:'파일 위치·지정 문구·기본 브랜치 확인', steps:[
     '프로젝트 최상위에 이름이 정확히 <code>README.md</code>인 파일을 만듭니다.',
@@ -58,6 +59,8 @@ const guides = [
     '<code>nothing to commit</code>: 이전 커밋 이후 실제 파일 변경이 없습니다. 파일을 수정하고 <code>git status</code>를 확인하세요.',
     '<code>Author identity unknown</code>: <code>git config --global user.name "이름"</code>과 <code>git config --global user.email "이메일"</code>을 설정하세요.',
     '로컬 로그에만 두 개가 보이면 <code>git push</code>와 GitHub의 기본 브랜치 커밋 목록을 확인하세요.',
+    'GitHub 화면에서 연필 아이콘으로 편집한 커밋은 committer가 <code>GitHub</code>로 기록되어 인정되지 않습니다. 터미널에서 <code>git commit</code> 후 <code>git push</code>하세요.',
+    '<code>git commit --allow-empty</code>로 개수만 늘린 커밋도 인정되지 않습니다. 실제 파일 변경이 필요합니다.',
     '새 브랜치의 커밋은 이 항목에 포함되지 않습니다.'
   ]},
   { id:'branch', no:'04', title:'practice/feature 브랜치 만들기', sub:'로컬 브랜치와 원격 브랜치 구별', steps:[
@@ -68,6 +71,7 @@ const guides = [
     '<code>git branch</code>에만 있고 GitHub에는 없으면 아직 push하지 않은 상태입니다.',
     '<code>branch already exists</code>: <code>git switch practice/feature</code>로 이동하세요.',
     '<code>feature</code>처럼 이름이 다르면 채점하지 않습니다. 정확한 이름을 사용하세요.',
+    '브랜치만 만들고 커밋하지 않으면 기본 브랜치와 내용이 같아 통과하지 않습니다. 파일을 수정해 커밋한 뒤 푸시하세요.',
     'PR 병합 후 브랜치를 삭제했다면 다시 실패할 수 있으므로 평가 전까지 유지하세요.'
   ]},
   { id:'issue', no:'05', title:'학습 계획 이슈 만들기', sub:'이슈 제목·저장소·기능 활성화 확인', steps:[
@@ -77,6 +81,7 @@ const guides = [
   ], success:'해당 저장소에 제목에 ‘학습 계획’이 들어간 이슈가 있습니다.', trouble:[
     'Issues 탭이 없으면 <strong>Settings → General → Features</strong>에서 Issues가 켜져 있는지 확인하세요.',
     '다른 저장소에 만들었거나 PR 제목에만 문구를 적으면 통과하지 않습니다.',
+    '다른 계정이 만든 이슈는 인정하지 않습니다. 본인 계정으로 로그인해 만드세요.',
     '본문에만 문구가 있으면 실패합니다. 이슈 제목을 확인하세요.',
     '이슈가 100개 넘는 저장소에서는 최근 100개만 조회하므로 실습용 새 저장소를 권장합니다.'
   ]},
@@ -88,6 +93,7 @@ const guides = [
     '<code>There isn’t anything to compare</code>: 두 브랜치에 차이가 없습니다. 새 브랜치에서 파일을 수정해 commit과 push를 하세요.',
     'base와 compare를 반대로 선택하면 채점하지 않습니다. PR 화면에서 방향을 확인하세요.',
     '다른 저장소에 만들었거나 브랜치를 GitHub에 push하지 않았으면 찾을 수 없습니다.',
+    '다른 계정이 만든 PR이나 다른 Fork에서 보낸 PR은 인정하지 않습니다.',
     'PR이 100개 넘는 저장소에서는 최근 100개만 확인합니다.'
   ]}
 ];
