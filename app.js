@@ -141,7 +141,7 @@ function render(report) {
   $('scoreMessage').textContent = report.score === 100 ? '모든 실습 목표를 달성했습니다.' : '아래 항목을 확인하고 다시 도전해 보세요.';
   $('scoreRing').style.background = `conic-gradient(var(--purple) ${report.score}%, #35435b ${report.score}%)`;
   $('scoreRingText').textContent = `${report.score}%`;
-  $('resultList').replaceChildren(...report.results.map(result => {
+  $('resultList').replaceChildren(...report.results.map((result, index) => {
     const row = document.createElement('div'); row.className = 'result-item';
     const mark = document.createElement('span'); mark.className = `result-mark ${result.state}`;
     mark.textContent = result.state === 'pass' ? '✓' : result.state === 'fail' ? '×' : '?';
