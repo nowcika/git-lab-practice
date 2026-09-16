@@ -1,3 +1,34 @@
+const setupRoot = document.getElementById('setupManual');
+if (setupRoot) setupRoot.innerHTML = `
+<div class="manual-heading"><span class="eyebrow">SCREEN GUIDE</span><h3>설치·가입 화면 매뉴얼</h3><p>화면 속 번호를 확인하면서 순서대로 진행하세요. 비밀번호, 인증 코드, 복구 코드는 누구에게도 공유하지 마세요.</p></div>
+<article class="manual" id="manual-git"><div class="manual-title"><div><span class="manual-num">A</span><h3>Git 설치하기</h3></div><a href="https://git-scm.com/install/" target="_blank" rel="noopener noreferrer">공식 설치 페이지 열기 ↗</a></div>
+<div class="manual-shot"><img src="assets/git-install.png" alt="Git 공식 운영체제 선택 화면"><i class="pin install-p1">1</i><i class="pin install-p2">2</i><i class="pin install-p3">3</i></div>
+<div class="manual-callouts"><span><b>1</b><strong>Windows</strong>회사·교육장 PC 대부분은 이 메뉴를 선택합니다.</span><span><b>2</b><strong>macOS</strong>MacBook 또는 iMac 사용자는 이 메뉴를 선택합니다.</span><span><b>3</b><strong>Linux</strong>Ubuntu·Fedora 등 배포판별 명령을 확인합니다.</span></div>
+<div class="os-guides">
+<details open><summary>Windows 설치 <small>처음 설치할 때 권장</small></summary><div><ol><li>공식 Windows 페이지에서 PC에 맞는 설치 파일을 받습니다. 대부분의 Intel·AMD PC는 <strong>x64 Setup</strong>, ARM 기반 PC만 <strong>ARM64 Setup</strong>입니다.</li><li>다운로드한 설치 파일을 실행합니다. Windows의 변경 허용 질문이 나오면 게시자가 Git for Windows인지 확인하고 허용합니다.</li><li>수업용 기본 설치에서는 구성 요소, 기본 편집기, PATH, HTTPS, 줄바꿈 등의 옵션을 이해하지 못한다면 설치 프로그램의 기본값을 유지해도 됩니다.</li><li>설치 완료 후 기존 터미널을 닫고 <strong>Git Bash</strong> 또는 PowerShell을 새로 엽니다.</li><li><code>git --version</code>을 실행합니다. 이어서 아래 사용자 정보를 본인 값으로 설정합니다.</li></ol><div class="manual-shot inline-shot"><img src="assets/git-windows.png" alt="Git for Windows 공식 다운로드 화면"><i class="pin win-p1">1</i><i class="pin win-p2">2</i></div><div class="inline-caption"><span><b>1</b> 일반적인 Windows PC는 최신 x64 설치 파일</span><span><b>2</b> 명령 설치를 선호하면 화면의 winget 명령</span></div><pre><code>git --version
+git config --global user.name "홍길동"
+git config --global user.email "GitHub에 등록한 이메일"
+git config --global --list</code></pre><div class="manual-check"><strong>완료 확인</strong><code>git version 2.x.x</code>가 나오고 마지막 명령에서 이름과 이메일을 찾을 수 있어야 합니다.</div><div class="manual-error"><strong>문제 해결</strong><span>‘git을 찾을 수 없음’ → 터미널을 완전히 다시 열기 → 그래도 안 되면 Git 재설치 시 PATH 옵션 확인</span><span>설치 파일 실행 차단 → 공식 git-scm.com에서 받은 파일인지 확인하고 조직 PC라면 관리자에게 설치 요청</span><span>잘못된 이름·이메일 → 같은 config 명령을 올바른 값으로 다시 실행</span></div></div></details>
+<details><summary>macOS 설치 <small>Command Line Tools 또는 Homebrew</small></summary><div><ol><li><strong>가장 간단한 방법:</strong> Terminal 앱에서 <code>xcode-select --install</code>을 실행하고 설치 창을 완료합니다.</li><li>Homebrew를 이미 사용한다면 <code>brew install git</code>으로 설치할 수도 있습니다.</li><li>Terminal을 새로 열어 <code>git --version</code>으로 확인한 뒤 사용자 이름과 이메일을 Windows 안내와 같은 명령으로 설정합니다.</li></ol><pre><code>xcode-select --install
+# Homebrew 사용자는 다음 방법도 가능
+brew install git
+git --version</code></pre><div class="manual-error"><strong>문제 해결</strong><span><code>xcode-select: error</code> → macOS 업데이트 상태와 인터넷 연결을 확인한 뒤 다시 실행</span><span>Homebrew 명령 없음 → Homebrew가 없는 상태이므로 Command Line Tools 방식을 사용</span></div></div></details>
+<details><summary>Linux 설치 <small>Ubuntu·Debian·Fedora</small></summary><div><ol><li>터미널을 열고 배포판에 맞는 패키지 관리 명령을 실행합니다.</li><li>관리자 암호 입력 중에는 화면에 글자가 표시되지 않을 수 있지만 정상입니다.</li><li>설치 후 버전과 사용자 정보를 확인합니다.</li></ol><pre><code># Ubuntu / Debian
+sudo apt update
+sudo apt install git
+
+# Fedora
+sudo dnf install git
+
+git --version</code></pre><div class="manual-error"><strong>문제 해결</strong><span>권한 오류 → sudo 권한이 있는 계정인지 관리자에게 확인</span><span>패키지를 찾지 못함 → 저장소 목록 업데이트와 배포판 이름 확인</span></div></div></details></div></article>
+<article class="manual" id="manual-github"><div class="manual-title"><div><span class="manual-num">B</span><h3>GitHub 개인 계정 만들기</h3></div><a href="https://github.com/signup" target="_blank" rel="noopener noreferrer">가입 화면 열기 ↗</a></div>
+<div class="manual-shot signup-shot"><img src="assets/github-signup.png" alt="GitHub 가입 화면"><i class="pin signup-p1">1</i><i class="pin signup-p2">2</i><i class="pin signup-p3">3</i></div>
+<div class="manual-callouts"><span><b>1</b><strong>가입 방법</strong>이메일로 가입하거나 Google·Apple 계정을 선택합니다.</span><span><b>2</b><strong>입력·계속</strong>안내에 따라 이메일, 암호, 사용자 이름을 정합니다.</span><span><b>3</b><strong>이미 계정이 있다면</strong>새로 만들지 말고 Sign in으로 로그인합니다.</span></div>
+<div class="account-steps"><section><span>01</span><div><h4>가입 방식 선택</h4><p>이메일로 가입하거나 지원되는 Google·Apple 로그인을 선택합니다. 교육용 계정 정책이 있다면 강사의 안내를 우선합니다.</p></div></section><section><span>02</span><div><h4>이메일과 강한 암호 입력</h4><p>본인이 메일을 받을 수 있는 주소를 사용합니다. 다른 사이트와 겹치지 않는 긴 암호를 사용하고 화면에 암호를 공유하지 않습니다.</p></div></section><section><span>03</span><div><h4>사용자 이름 정하기</h4><p>사용자 이름은 프로필 주소 <code>github.com/사용자이름</code>과 커밋·저장소에 공개됩니다. 표시 이름과 다르며 이 실습의 채점 입력값으로 사용됩니다.</p></div></section><section><span>04</span><div><h4>사람 확인과 이메일 인증</h4><p>화면의 CAPTCHA를 완료하고 GitHub가 보낸 인증 메일의 링크 또는 코드를 사용합니다. 이메일 인증 전에는 저장소 생성 같은 기본 기능이 제한될 수 있습니다.</p></div></section><section><span>05</span><div><h4>프로필과 사용자 이름 확인</h4><p>오른쪽 위 프로필 사진 → <strong>Your profile</strong>을 열고 주소창의 사용자 이름을 확인합니다. 위 입력칸에는 이메일이나 표시 이름을 넣지 않습니다.</p></div></section><section><span>06</span><div><h4>2단계 인증 설정</h4><p>프로필 사진 → <strong>Settings → Password and authentication</strong>에서 2FA를 설정합니다. 인증 앱(TOTP)을 권장하며 복구 코드는 계정과 다른 안전한 장소에 보관합니다.</p></div></section></div>
+<div class="account-trouble"><h4>가입이 안될 때 확인</h4><ul><li><strong>인증 메일이 없음:</strong> 스팸함과 입력한 주소를 확인하고 잠시 후 재전송합니다. 회사·학교 메일 필터가 차단할 수 있습니다.</li><li><strong>사용자 이름 사용 불가:</strong> 이미 사용 중이거나 규칙에 맞지 않습니다. 짧은 단어를 추가해 고유하게 만드세요.</li><li><strong>이메일이 이미 사용됨:</strong> 기존 계정으로 로그인하거나 암호 찾기를 이용합니다.</li><li><strong>채점에서 프로필을 찾지 못함:</strong> 프로필 URL의 사용자 이름을 입력하고 URL을 직접 열어 봅니다.</li><li><strong>2FA 기기 분실:</strong> 저장한 복구 코드를 사용합니다. 복구 코드는 강사나 동료에게 보내지 않습니다.</li></ul></div>
+<div class="manual-links"><a href="https://docs.github.com/en/account-and-profile/how-tos/account-management/creating-an-account-on-github" target="_blank" rel="noopener noreferrer">GitHub 공식 가입 안내 ↗</a><a href="https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/configuring-two-factor-authentication" target="_blank" rel="noopener noreferrer">2단계 인증 공식 안내 ↗</a></div></article>
+<p class="capture-note">화면 캡처는 2026년 9월의 공식 웹페이지 기준입니다. 서비스 업데이트로 배치나 문구가 달라질 수 있으므로 연결된 공식 페이지를 함께 확인하세요.</p>`;
+
 const guides = [
   { id:'repo', no:'01', title:'공개 저장소 만들고 연결하기', sub:'저장소 URL·권한·push 오류 확인', steps:[
     'GitHub의 <a href="https://github.com/new" target="_blank" rel="noopener noreferrer">New repository</a>에서 소유자를 본인 계정으로 선택하고 <strong>Public</strong>으로 만듭니다. 이 실습에서는 README 자동 생성을 끄세요.',

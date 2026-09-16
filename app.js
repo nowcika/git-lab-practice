@@ -150,8 +150,8 @@ function render(report) {
     body.append(name, detail);
     if (result.state !== 'pass') {
       const link = document.createElement('a'); link.className = 'result-guide';
-      link.href = guideIds[index].startsWith('install') || guideIds[index] === 'account' ? '#setup' : `#guide-${guideIds[index]}`;
-      link.textContent = guideIds[index] === 'install' || guideIds[index] === 'account' ? '준비 과정 확인 ↑' : '해결 가이드 보기 ↑';
+      link.href = guideIds[index] === 'install' ? '#manual-git' : guideIds[index] === 'account' ? '#manual-github' : `#guide-${guideIds[index]}`;
+      link.textContent = '해결 가이드 보기 ↑';
       link.addEventListener('click', (event) => {
         if (guideIds[index] === 'install' || guideIds[index] === 'account') return;
         event.preventDefault(); const guide = document.getElementById(`guide-${guideIds[index]}`);
