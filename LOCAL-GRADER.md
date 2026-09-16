@@ -41,7 +41,9 @@ Windows에서도 실행할 수 있습니다. `/path/to/...`와 `/tmp/...`를 실
 
 이 검증기는 현재 웹페이지 채점 기준을 기반으로 하되 소유자·push·revert 검사를 강화했습니다. 공식 정답 `nowcika/git-scenario-solution`은 이 검증기에서만 원본 Fork 조건의 예외이며, 온라인 검증은 해당 소유 계정 인증이 필요합니다. 웹 채점기는 2026-09-16부터 정답 저장소를 채점하지 않습니다(자동 테스트용 `?allowAnswerRepo=1` 제외).
 
-remote는 이름과 GitHub 저장소를 기록하고 reflog는 항목 수를 보조 근거로 남깁니다. 최종 이력만으로 `reset`, `rebase`, `amend`, `cherry-pick` 명령을 실제로 입력했는지는 증명하지 못합니다. diff/show/blame 보고서는 필수 내용 확인이며 원본과 독립적으로 대조하는 검사는 아닙니다. Release는 workflow 내용과 실제 공개 Release/asset을 확인하며, 특정 Actions 실행으로 생성됐다는 출처까지 증명하지 않습니다.
+remote는 이름과 GitHub 저장소를 기록하고 reflog는 항목 수를 보조 근거로 남깁니다. 최종 이력만으로 `reset`, `rebase`, `amend`, `cherry-pick` 명령을 실제로 입력했는지는 증명하지 못합니다.
+
+`diff`·`show`·`blame`은 문구 대조를 넘어 Git 객체와 대조합니다. `diff`는 patch의 `index` 결과 blob 해시가 저장소에 실제로 존재하고 그 blob 내용이 patch에 담겨 있는지 확인하므로, 손으로 지어낸 patch는 통과하지 못합니다. `show`·`blame`은 보고서에 적은 커밋 SHA가 실제 커밋이어야 하고 함께 적은 제목·작성자가 그 커밋의 값과 일치해야 하며, `blame`은 그 커밋이 실제로 대상 줄을 추가했는지까지 확인합니다. 이 검사들은 원본 커밋이 로컬에 있어야 하므로 `git fetch upstream`을 먼저 실행하세요. 객체를 찾지 못하면 오답이 아니라 `unknown`으로 보류하고 안내 문구를 표시합니다. Release는 workflow 내용과 실제 공개 Release/asset을 확인하며, 특정 Actions 실행으로 생성됐다는 출처까지 증명하지 않습니다.
 
 일반 clone은 원래 PC의 reflog를 가져오지 않습니다. shallow clone은 이력 관련 판정을 보류합니다. 자체 실행 JSON은 변조 방지 제출물이 아니므로 시험용 강제 채점에는 별도의 신뢰된 채점 환경이 필요합니다.
 

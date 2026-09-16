@@ -9,7 +9,40 @@ test('배포 사이트와 18개 시나리오',async({request})=>{const x=await r
 test('원본 문제 브랜치',async({request})=>{for(const n of ['upstream-update','conflict-left','conflict-right','revert','rebase-topic','rebase-base','reset','reflog-base','amend','cherry-source','diff-base','diff-target','show-source','patch-source','blame','branch-workflow','actions-release','pages'])expect((await request.get(`${source}/branches/${encodeURIComponent(`scenario/${n}`)}`)).ok(),n).toBeTruthy()});
 test('remote conflict revert rebase',async({request})=>{expect(await content(request,'instructor-update.md','solution/upstream-sync')).toContain('UPSTREAM-SYNC-COMPLETE');const p=await content(request,'team-plan.md','solution/conflict');for(const x of ['프론트엔드: UI 배포 준비','백엔드: API 배포 준비','공동 확인: 통합 테스트 완료'])expect(p).toContain(x);expect((await commits(request,'solution/conflict')).some(c=>c.parents.length>=2)).toBeTruthy();expect(await content(request,'shared-config.json','solution/external-remote')).toContain('REMOTE-LIBRARY-V1');expect(await missing(request,'secrets.env','solution/revert')).toBeTruthy();expect((await commits(request,'solution/revert')).some(c=>c.commit.message.startsWith('Revert '))).toBeTruthy();expect(await content(request,'notes/base-update.txt','solution/rebase')).toBeTruthy();expect(await content(request,'notes/topic.txt','solution/rebase')).toBeTruthy();expect((await commits(request,'solution/rebase')).every(c=>c.parents.length<=1)).toBeTruthy()});
 test('reset reflog amend cherry-pick',async({request})=>{expect(await content(request,'stable-config.txt','solution/reset')).toContain('STABLE-CONFIG-V1');expect(await missing(request,'unwanted-experiment.txt','solution/reset')).toBeTruthy();expect(await content(request,'recovered-note.txt','solution/reflog')).toContain('REFLOG-RECOVERED-COMMIT');const n=await content(request,'release-note.md','solution/amend');expect(n).toContain('# Release Note');expect(n).toContain('Version: draft');expect((await commits(request,'solution/amend'))[0].commit.message).toBe('docs: add release note');expect(await content(request,'urgent-fix.txt','solution/cherry-pick')).toContain('CHERRY-PICK-HOTFIX-2026')});
-test('diff show patch blame',async({request})=>{const d=await content(request,'reports/change.patch','solution/diff');for(const x of ['diff --git','SERVICE_MODE=production','TIMEOUT=60','DIFF-TARGET-2026'])expect(d).toContain(x);const s=await content(request,'reports/show-report.md','solution/show');for(const x of ['fix: restore missing deployment configuration','SHOW-EVIDENCE-4821','forensic.txt'])expect(s).toContain(x);expect(await content(request,'patch-feature.txt','solution/patch')).toContain('FORMAT-PATCH-TRANSFER-2026');const b=await content(request,'reports/blame-answer.md','solution/blame');for(const x of ['BLAME-OWNER-7392','Release Manager','docs: add release approval check'])expect(b).toContain(x)});
+test('diff show patch blame — 정답이 원본의 실제 근거와 일치',async({request})=>{
+  // diff: 제출 patch가 원본 두 브랜치의 실제 compare 결과와 일치해야 합니다.
+  const d=await content(request,'reports/change.patch','solution/diff');
+  const cmp=await json(request,`${source}/compare/${encodeURIComponent('scenario/diff-base')}...${encodeURIComponent('scenario/diff-target')}`);
+  expect(cmp.files.length).toBeGreaterThan(0);
+  expect((d.match(/^diff --git /gm)||[]).length).toBe(cmp.files.length);
+  for(const file of cmp.files){
+    expect(d,file.filename).toContain(`diff --git a/${file.filename} b/${file.filename}`);
+    expect(d,`${file.filename} index blob`).toContain(file.sha.slice(0,7));
+    for(const line of file.patch.split('\n').filter(x=>/^[-+]/.test(x)&&x.trim()!=='+'&&x.trim()!=='-')) expect(d,line).toContain(line);
+  }
+  // show: 보고서가 원본 커밋의 SHA·작성자·메시지·파일·증거를 담아야 합니다.
+  const src=await json(request,`${source}/commits/${encodeURIComponent('scenario/show-source')}`);
+  const r=await content(request,'reports/show-report.md','solution/show');
+  expect(src.sha.startsWith((r.toLowerCase().match(/\b[0-9a-f]{7,40}\b/g)||[]).find(t=>src.sha.startsWith(t))||'\u0000')).toBeTruthy();
+  expect(r).toContain(src.commit.message.split('\n')[0]);
+  expect(r).toContain(src.commit.author.name);
+  expect(r).toContain(src.files[0].filename);
+  expect(r).toContain(src.files[0].patch.split('\n').find(x=>x.startsWith('+')&&x.slice(1).trim()).slice(1).trim());
+  // blame: 답안이 대상 줄을 추가한 커밋을 가리켜야 합니다.
+  const list=await json(request,`${source}/commits?sha=${encodeURIComponent('scenario/blame')}&path=audit-checklist.md&per_page=10`);
+  let origin=null;
+  for(const entry of list.slice(0,5)){
+    const detail=await json(request,`${source}/commits/${entry.sha}`);
+    const added=detail.files.flatMap(x=>(x.patch||'').split('\n')).find(x=>/^\+.*BLAME-OWNER-/.test(x));
+    if(added){origin={sha:detail.sha,author:detail.commit.author.name,subject:detail.commit.message.split('\n')[0],marker:added.match(/BLAME-OWNER-[\w-]+/)[0]};break}
+  }
+  expect(origin,'대상 줄을 추가한 커밋').not.toBeNull();
+  const b=await content(request,'reports/blame-answer.md','solution/blame');
+  expect((b.toLowerCase().match(/\b[0-9a-f]{7,40}\b/g)||[]).some(t=>origin.sha.startsWith(t))).toBeTruthy();
+  expect(b).toContain(origin.author); expect(b).toContain(origin.subject); expect(b).toContain(origin.marker);
+  // patch 시나리오는 그대로 확인합니다.
+  expect(await content(request,'patch-feature.txt','solution/patch')).toContain('FORMAT-PATCH-TRANSFER-2026');
+});
 test('브랜치 이동과 amend',async({request})=>{expect(await content(request,'frontend-task.txt','solution/branch-a')).toContain('BRANCH-A-ORIGINAL');expect(await missing(request,'backend-task.txt','solution/branch-a')).toBeTruthy();expect(await content(request,'frontend-task.txt','solution/branch-b')).toContain('MOVED-AND-AMENDED-2026');expect(await content(request,'backend-task.txt','solution/branch-b')).toContain('BRANCH-B-BACKEND');const h=await commits(request,'solution/branch-b');expect(h[0].commit.message).toBe('feat: move and refine shared task');expect(h.every(c=>c.parents.length<=1)).toBeTruthy()});
 test('Actions Release와 asset',async({request})=>{const w=await content(request,'.github/workflows/release.yml','solution/actions-release');expect(w).toContain('contents: write');expect(w).toContain('gh release create');const r=await json(request,`${api}/releases/tags/release-v1.0.0`);expect(r.draft).toBeFalsy();expect(r.assets.some(a=>a.name==='scenario-artifact.txt'&&a.state==='uploaded')).toBeTruthy()});
 test('Pages 실제 서비스',async({request})=>{expect(await content(request,'docs/index.html','solution/pages')).toContain('PAGES-LIVE-2026');const live=await request.get('https://nowcika.github.io/git-scenario-solution/');expect(live.ok()).toBeTruthy();expect(await live.text()).toContain('PAGES-LIVE-2026')});

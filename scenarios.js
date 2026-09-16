@@ -3,6 +3,9 @@ const scenarioRoot = document.getElementById('scenarioApp');
 // 공식 정답 저장소로는 점수를 낼 수 없습니다. UI 자동 테스트만 ?allowAnswerRepo=1로 예외를 켭니다.
 const answerRepoAllowed = new URLSearchParams(location.search).get('allowAnswerRepo') === '1';
 const OFFICIAL_ANSWER = 'nowcika/git-scenario-solution';
+// diff·show·blame은 정답 문구를 코드에 박아 두지 않고, 채점 시점에 원본 저장소에서 직접 계산합니다.
+const UPSTREAM_REPO = 'nowcika/git-scenario-lab';
+const UPSTREAM_BASE = `/repos/${UPSTREAM_REPO}`;
 const scenarioDefinitions = [
   { id:'fork', no:'00', title:'Fork하고 clone하기', points:15, level:'필수 준비', goal:'원본 저장소를 자신의 GitHub 계정으로 Fork하고 로컬에 clone합니다.', commands:`# 1. 아래 ‘원본 저장소 Fork’ 버튼을 먼저 누릅니다.
 # 2. 내 Fork의 주소로 clone합니다.
@@ -270,7 +273,7 @@ git diff --name-status upstream/scenario/diff-base..upstream/scenario/diff-targe
 cat reports/change.patch
 git add reports/change.patch
 git commit -m "docs: submit diff analysis"
-git push -u origin solution/diff`, checks:['비교 순서가 base → target인가? 순서를 바꾸면 +와 -가 반대로 보입니다.', 'patch에 service.conf 변경과 deploy.conf 추가가 모두 보이는가?', '`--stat`, `--name-status`, 일반 diff의 출력 차이를 확인했는가?'], verify:'제출한 patch의 diff 헤더·변경 내용과, 보고서를 담은 커밋 메시지를 함께 검사합니다.',
+git push -u origin solution/diff`, checks:['비교 순서가 base → target인가? 순서를 바꾸면 +와 -가 반대로 보입니다.', 'patch에 service.conf 변경과 deploy.conf 추가가 모두 보이는가?', '`git diff`가 만든 출력을 그대로 저장했는가? 손으로 적은 요약은 통과하지 않습니다.', 'patch에 `diff --git`, `index`, `@@` 줄이 모두 들어 있는가?', '`--stat`, `--name-status`, 일반 diff의 출력 차이를 확인했는가?'], verify:'채점 시점에 원본 두 브랜치를 GitHub compare API로 비교해, 제출한 patch의 파일 목록·index blob 해시·hunk 헤더·추가/삭제 줄이 실제 diff와 일치하는지 대조합니다.',
     usage:[
       ['비교 대상 고르기', [
         ['git diff', '아직 스테이지에 올리지 않은 변경만 봅니다.'],
@@ -295,17 +298,21 @@ git log --oneline upstream/scenario/show-source -1
 git show --stat upstream/scenario/show-source
 git show upstream/scenario/show-source
 
+# 위 출력에서 아래 다섯 가지를 직접 읽어 채웁니다.
+#   commit 줄의 SHA / Author 이름 / 제목 줄 / 바뀐 파일 이름 / 추가된 줄의 문구
 mkdir -p reports
 cat > reports/show-report.md <<'REPORT'
 # git show 조사 결과
-커밋 메시지: fix: restore missing deployment configuration
-증거 문구: SHOW-EVIDENCE-4821
-변경 파일: forensic.txt
+커밋 SHA: <commit 줄의 40자리 SHA>
+작성자: <Author 줄의 이름>
+커밋 메시지: <제목 줄 전체>
+증거 문구: <추가된 줄에 적힌 문구>
+변경 파일: <바뀐 파일 이름>
 REPORT
 
 git add reports/show-report.md
 git commit -m "docs: report inspected commit"
-git push -u origin solution/show`, checks:['`git show`가 commit 정보와 patch를 함께 출력하는지 확인했는가?', '`git show --stat`은 요약만 보여 주는 차이를 확인했는가?', '보고서의 메시지, 증거 문구, 파일 이름이 실제 출력과 일치하는가?'], verify:'show 조사 보고서의 커밋 메시지·고유 증거·파일 이름과, 보고서를 담은 커밋 메시지를 검사합니다.',
+git push -u origin solution/show`, checks:['`git show`가 commit 정보와 patch를 함께 출력하는지 확인했는가?', '`git show --stat`은 요약만 보여 주는 차이를 확인했는가?', '보고서의 SHA·작성자·메시지·파일 이름·증거 문구가 실제 출력과 모두 일치하는가?', 'SHA는 7자리 이상 적어야 합니다. 앞 7자리만 적어도 됩니다.'], verify:'채점 시점에 원본 저장소의 scenario/show-source 커밋을 직접 조회해, 보고서의 SHA·작성자·커밋 메시지·변경 파일·증거 문구를 모두 대조합니다. 정답 문구는 채점기에 저장돼 있지 않습니다.',
     usage:[
       ['git show', [
         ['git show <SHA>', '커밋 정보와 변경 내용(patch)을 함께 봅니다.'],
@@ -356,17 +363,21 @@ git blame upstream/scenario/blame -- audit-checklist.md
 git blame -L 4,4 upstream/scenario/blame -- audit-checklist.md
 git log -p upstream/scenario/blame -- audit-checklist.md
 
+# blame 출력의 SHA를 골라 그 커밋을 다시 확인합니다.
+git show <blame이 알려 준 SHA>
+
 mkdir -p reports
 cat > reports/blame-answer.md <<'ANSWER'
 # blame 조사 답안
-대상: BLAME-OWNER-7392
-작성자: Release Manager
-커밋 메시지: docs: add release approval check
+대상: <4번째 줄에 적힌 승인 코드>
+커밋 SHA: <blame이 알려 준 SHA>
+작성자: <그 커밋의 작성자 이름>
+커밋 메시지: <그 커밋의 제목 줄>
 ANSWER
 
 git add reports/blame-answer.md
 git commit -m "docs: submit blame investigation"
-git push -u origin solution/blame`, checks:['파일 전체 blame과 `-L 4,4`의 범위 제한을 모두 실행했는가?', 'blame 결과의 작성자와 커밋 SHA를 구분했는가?', '그 SHA를 `git show`로 다시 확인했는가?', 'blame은 비난이 아니라 변경 이유를 찾는 조사 도구로 사용해야 합니다.'], verify:'답안 파일의 대상 문구·작성자·원래 커밋 메시지와, 답안을 담은 커밋 메시지를 검사합니다.',
+git push -u origin solution/blame`, checks:['파일 전체 blame과 `-L 4,4`의 범위 제한을 모두 실행했는가?', 'blame 결과의 작성자와 커밋 SHA를 구분했는가?', '그 SHA를 `git show`로 다시 확인했는가?', '가장 최근 커밋이 아니라 해당 줄을 바꾼 커밋을 골랐는가?', 'blame은 비난이 아니라 변경 이유를 찾는 조사 도구로 사용해야 합니다.'], verify:'채점 시점에 원본 저장소에서 그 줄을 추가한 커밋을 직접 찾아, 답안의 SHA·작성자·커밋 메시지·대상 문구를 대조합니다. 파일의 최신 커밋을 적으면 통과하지 않습니다.',
     usage:[
       ['git blame', [
         ['git blame <파일>', '줄마다 마지막으로 바꾼 커밋과 작성자를 표시합니다.'],
@@ -554,7 +565,7 @@ if (scenarioRoot) {
   scenarioRoot.innerHTML = `<div class="scenario-start"><div><span class="scenario-kicker">START HERE</span><h3>하나의 Fork에서 17가지 문제를 해결합니다</h3><p>각 시나리오는 독립된 <code>solution/*</code> 브랜치를 사용하므로 순서대로 진행하거나 필요한 항목만 연습할 수 있습니다. 각 카드의 <strong>명령어 활용 사례</strong>에서 옵션별 차이를 함께 확인하세요.</p></div><div class="scenario-start-actions"><a href="https://github.com/nowcika/git-scenario-lab/fork" target="_blank" rel="noopener noreferrer">① 원본 저장소 Fork ↗</a><a href="https://github.com/nowcika/git-scenario-lab" target="_blank" rel="noopener noreferrer">원본 구조 보기 ↗</a><a href="https://github.com/nowcika/git-scenario-library" target="_blank" rel="noopener noreferrer">외부 저장소 보기 ↗</a><a href="https://github.com/${OFFICIAL_ANSWER}" target="_blank" rel="noopener noreferrer">전체 정답 저장소 ↗</a></div></div>
   <div class="scenario-flow"><span><b>1</b> Fork</span><i>→</i><span><b>2</b> Clone</span><i>→</i><span><b>3</b> Remote 연결</span><i>→</i><span><b>4</b> 문제 해결</span><i>→</i><span><b>5</b> Push·채점</span></div>
   <div class="scenario-list">${scenarioDefinitions.map((s, index) => `<details class="scenario" id="scenario-${s.id}" ${s.id==='fork'?'open':''}><summary><span class="scenario-no">${s.no}</span><div><small>${escapeHtml(s.level)}</small><strong>${escapeHtml(s.title)}</strong><p>${escapeHtml(s.goal)}</p></div><b>${s.points}점</b></summary><div class="scenario-body"><div><h4>실행 순서</h4><pre><code data-commands="${index}"></code><button class="scenario-copy" type="button" aria-label="${escapeHtml(s.title)} 명령 복사">명령 복사</button></pre><p class="scenario-verify"><strong>자동 채점 기준</strong>${escapeHtml(s.verify)}</p>${usageHtml(s.usage)}</div><div><h4>막혔을 때 확인</h4><ul>${s.checks.map(c=>`<li>${c}</li>`).join('')}</ul><div class="scenario-resource-links"><a class="scenario-doc" href="https://git-scm.com/docs" target="_blank" rel="noopener noreferrer">Git 공식 명령 문서 ↗</a><a class="scenario-answer" href="${scenarioAnswerUrl(s.id)}" target="_blank" rel="noopener noreferrer">정답 결과 보기 ↗</a></div></div></div></details>`).join('')}</div>
-  <div class="scenario-grade"><div class="scenario-grade-head"><div><span class="eyebrow">SCENARIO GRADER</span><h3>내 Fork 결과 채점</h3><p>Fork가 Public이어야 인증 없이 확인할 수 있습니다. 채점 1회에 GitHub API를 약 40회 사용합니다.</p></div><button id="scenarioGradeButton" class="grade-button">시나리오 채점하기 <span>→</span></button></div><label for="scenarioRepoUrl">내 Fork 저장소 URL</label><input id="scenarioRepoUrl" type="url" placeholder="https://github.com/내사용자이름/git-scenario-lab" autocomplete="url"><div id="scenarioStatus" role="status" aria-live="polite"></div><div id="scenarioResults" hidden><div class="scenario-score"><strong id="scenarioScore">0</strong><span>/ 290점</span><p id="scenarioScoreMessage"></p></div><div id="scenarioResultList" class="result-list"></div></div></div>`;
+  <div class="scenario-grade"><div class="scenario-grade-head"><div><span class="eyebrow">SCENARIO GRADER</span><h3>내 Fork 결과 채점</h3><p>Fork가 Public이어야 인증 없이 확인할 수 있습니다. 채점 1회에 GitHub API를 약 45회 사용합니다.</p></div><button id="scenarioGradeButton" class="grade-button">시나리오 채점하기 <span>→</span></button></div><label for="scenarioRepoUrl">내 Fork 저장소 URL</label><input id="scenarioRepoUrl" type="url" placeholder="https://github.com/내사용자이름/git-scenario-lab" autocomplete="url"><div id="scenarioStatus" role="status" aria-live="polite"></div><div id="scenarioResults" hidden><div class="scenario-score"><strong id="scenarioScore">0</strong><span>/ 290점</span><p id="scenarioScoreMessage"></p></div><div id="scenarioResultList" class="result-list"></div></div></div>`;
   // 명령 블록은 innerHTML이 아니라 textContent로 넣어 <브랜치> 같은 표기가 사라지지 않게 합니다.
   scenarioRoot.querySelectorAll('code[data-commands]').forEach(code => {
     code.textContent = scenarioDefinitions[Number(code.dataset.commands)].commands;
@@ -582,6 +593,31 @@ const commitList = (value) => Array.isArray(value) ? value : [];
 const hasMessage = (commits, pattern) => commitList(commits).some(c => pattern.test(c.commit?.message || ''));
 const isLinear = (commits) => commitList(commits).length > 0 && !commitList(commits).some(c => (c.parents || []).length > 1);
 const tipMessage = (commits) => commitList(commits)[0]?.commit?.message || '';
+const subjectOf = (commit) => (commit?.commit?.message || '').split('\n')[0].trim();
+// 보고서에 적힌 7자리 이상 16진수 토큰 중 실제 SHA의 앞부분과 일치하는 것이 있는지 봅니다.
+function mentionsSha(text, sha) {
+  const target = String(sha).toLowerCase();
+  return (String(text).toLowerCase().match(/\b[0-9a-f]{7,40}\b/g) || []).some(token => target.startsWith(token));
+}
+// compare API의 patch에서 실제로 대조할 줄(추가·삭제·hunk 헤더)만 추립니다.
+function comparableLines(patch) {
+  return String(patch || '').split('\n').map(line => {
+    if (line.startsWith('@@')) { const end = line.indexOf(' @@'); return end === -1 ? line : line.slice(0, end + 3); }
+    return line;
+  }).filter(line => /^[-+@]/.test(line) && line.trim() !== '+' && line.trim() !== '-');
+}
+// audit-checklist.md에서 대상 줄을 추가한 커밋을 원본 저장소에서 직접 찾습니다.
+async function blameOrigin() {
+  const list = await api(`${UPSTREAM_BASE}/commits?sha=${encodeURIComponent('scenario/blame')}&path=audit-checklist.md&per_page=10`);
+  if (!Array.isArray(list)) return null;
+  for (const entry of list.slice(0, 5)) {
+    const detail = await api(`${UPSTREAM_BASE}/commits/${entry.sha}`);
+    if (detail.missing) continue;
+    const added = (detail.files || []).flatMap(file => String(file.patch || '').split('\n')).find(line => /^\+.*BLAME-OWNER-/.test(line));
+    if (added) return { sha: detail.sha, author: detail.commit?.author?.name || '', subject: subjectOf(detail), marker: (added.match(/BLAME-OWNER-[\w-]+/) || [''])[0] };
+  }
+  return null;
+}
 
 async function gradeScenarios() {
   const input = document.getElementById('scenarioRepoUrl');
@@ -591,9 +627,9 @@ async function gradeScenarios() {
   button.disabled=true; resetApiUsage();
   status.textContent='Fork와 해결 브랜치를 확인하는 중입니다…'; document.getElementById('scenarioResults').hidden=true;
   try {
-    const quota = await checkQuota(40);
+    const quota = await checkQuota(45);
     if (quota && !quota.enough) {
-      status.textContent = `GitHub API 남은 한도가 ${quota.remaining}회뿐입니다(시나리오 채점 1회에 약 40회 필요). 약 ${quota.minutes}분 뒤에 다시 시도하거나 결과 확인 영역의 토큰 칸을 채우세요.`;
+      status.textContent = `GitHub API 남은 한도가 ${quota.remaining}회뿐입니다(시나리오 채점 1회에 약 45회 필요). 약 ${quota.minutes}분 뒤에 다시 시도하거나 결과 확인 영역의 토큰 칸을 채우세요.`;
       return;
     }
     const base=`/repos/${encodeURIComponent(parsed.owner)}/${encodeURIComponent(parsed.name)}`;
@@ -625,10 +661,57 @@ async function gradeScenarios() {
       async()=>{ const recovered=await scenarioContent(base,'recovered-note.txt','solution/reflog'); const commits=await scenarioCommits(base,'solution/reflog',10); return recovered?.includes('REFLOG-RECOVERED-COMMIT')&&hasMessage(commits,/add recoverable note/)?passed('reflog로 복구한 파일과 커밋 확인'):failed('recovered-note.txt의 고유 문구와 복구 커밋을 확인하세요.'); },
       async()=>{ const note=await scenarioContent(base,'release-note.md','solution/amend'); const commits=await scenarioCommits(base,'solution/amend',10); const messages=commitList(commits).map(c=>c.commit?.message||''); return note?.includes('# Release Note')&&note?.includes('Version: draft')&&messages[0]==='docs: add release note'&&!messages.some(m=>/releas note/.test(m))?passed('amend된 파일과 최신 커밋 메시지 확인'):failed('파일의 두 오타와 최신 메시지를 amend로 바로잡으세요.'); },
       async()=>{ const fix=await scenarioContent(base,'urgent-fix.txt','solution/cherry-pick'); const commits=await scenarioCommits(base,'solution/cherry-pick',10); return fix?.includes('CHERRY-PICK-HOTFIX-2026')&&hasMessage(commits,/urgent standalone hotfix/)&&isLinear(commits)?passed('선택한 긴급 수정 커밋 확인'):failed('긴급 수정 커밋만 cherry-pick하고 해결 브랜치를 push하세요.'); },
-      async()=>{ const patch=await scenarioContent(base,'reports/change.patch','solution/diff'); const commits=await scenarioCommits(base,'solution/diff',10); const required=['diff --git','SERVICE_MODE=production','TIMEOUT=60','DIFF-TARGET-2026','config/deploy.conf']; if(!(patch&&required.every(x=>patch.includes(x)))) return failed('reports/change.patch에 두 파일의 전체 diff를 저장하세요.'); return /submit diff analysis/.test(tipMessage(commits))?passed('두 브랜치의 실제 diff patch 확인'):failed('patch는 있지만 "docs: submit diff analysis" 커밋으로 제출되지 않았습니다.'); },
-      async()=>{ const report=await scenarioContent(base,'reports/show-report.md','solution/show'); const commits=await scenarioCommits(base,'solution/show',10); const required=['fix: restore missing deployment configuration','SHOW-EVIDENCE-4821','forensic.txt']; if(!(report&&required.every(x=>report.includes(x)))) return failed('show-report.md에 메시지, 증거 문구, 파일 이름을 기록하세요.'); return /report inspected commit/.test(tipMessage(commits))?passed('git show 조사 보고서 확인'):failed('보고서는 있지만 "docs: report inspected commit" 커밋으로 제출되지 않았습니다.'); },
+      async()=>{
+        const patch=await scenarioContent(base,'reports/change.patch','solution/diff');
+        if(!patch) return failed('solution/diff 브랜치에 reports/change.patch를 제출하세요.');
+        const commits=await scenarioCommits(base,'solution/diff',10);
+        if(!/submit diff analysis/.test(tipMessage(commits))) return failed('patch는 있지만 "docs: submit diff analysis" 커밋으로 제출되지 않았습니다.');
+        const compare=await api(`${UPSTREAM_BASE}/compare/${encodeURIComponent('scenario/diff-base')}...${encodeURIComponent('scenario/diff-target')}`);
+        if(compare.missing||!Array.isArray(compare.files)) return unknown('원본 저장소의 비교 결과를 가져오지 못했습니다. 잠시 후 다시 시도하세요.');
+        const problems=[];
+        for(const file of compare.files){
+          if(!patch.includes(`diff --git a/${file.filename} b/${file.filename}`)){ problems.push(`${file.filename}의 diff --git 헤더가 없습니다`); continue; }
+          if(!patch.includes(String(file.sha).slice(0,7))){ problems.push(`${file.filename}의 index blob 해시가 실제와 다릅니다`); continue; }
+          const missing=comparableLines(file.patch).find(line=>!patch.includes(line));
+          if(missing) problems.push(`${file.filename}에서 "${missing.slice(0,26)}" 줄을 찾지 못했습니다`);
+        }
+        const headers=(patch.match(/^diff --git /gm)||[]).length;
+        if(headers!==compare.files.length) problems.push(`변경 파일 수가 다릅니다(제출 ${headers}개 / 실제 ${compare.files.length}개)`);
+        return problems.length?failed(`제출한 patch가 원본의 실제 diff와 다릅니다: ${problems.slice(0,2).join(' / ')}`)
+          :passed(`원본 두 브랜치의 실제 diff와 일치 (파일 ${compare.files.length}개, blob 해시까지 확인)`); },
+      async()=>{
+        const report=await scenarioContent(base,'reports/show-report.md','solution/show');
+        if(!report) return failed('solution/show 브랜치에 reports/show-report.md를 제출하세요.');
+        const commits=await scenarioCommits(base,'solution/show',10);
+        if(!/report inspected commit/.test(tipMessage(commits))) return failed('보고서는 있지만 "docs: report inspected commit" 커밋으로 제출되지 않았습니다.');
+        const source=await api(`${UPSTREAM_BASE}/commits/${encodeURIComponent('scenario/show-source')}`);
+        if(source.missing||!source.sha) return unknown('원본 저장소의 조사 대상 커밋을 가져오지 못했습니다. 잠시 후 다시 시도하세요.');
+        const file=(source.files||[])[0];
+        const evidence=String(file?.patch||'').split('\n').find(line=>line.startsWith('+')&&line.slice(1).trim())?.slice(1).trim()||'';
+        const missing=[];
+        if(!mentionsSha(report,source.sha)) missing.push('커밋 SHA(7자리 이상)');
+        if(!report.includes(subjectOf(source))) missing.push('커밋 메시지');
+        const author=source.commit?.author?.name||'';
+        if(author&&!report.includes(author)) missing.push('작성자');
+        if(file&&!report.includes(file.filename)) missing.push('변경 파일 이름');
+        if(evidence&&!report.includes(evidence)) missing.push('증거 문구');
+        return missing.length?failed(`show-report.md에서 확인하지 못한 항목: ${missing.join(', ')}. git show 출력을 그대로 옮겨 적으세요.`)
+          :passed(`원본 커밋 ${source.sha.slice(0,7)}의 SHA·작성자·메시지·파일·증거까지 일치`); },
       async()=>{ const file=await scenarioContent(base,'patch-feature.txt','solution/patch'); const commits=await scenarioCommits(base,'solution/patch',10); return file?.includes('FORMAT-PATCH-TRANSFER-2026')&&commitList(commits).some(c=>c.commit?.message==='feat: add transferable patch feature')&&isLinear(commits)?passed('format-patch로 전달된 커밋 확인'):failed('format-patch를 git am으로 solution/patch에 적용하세요.'); },
-      async()=>{ const answer=await scenarioContent(base,'reports/blame-answer.md','solution/blame'); const commits=await scenarioCommits(base,'solution/blame',10); const required=['BLAME-OWNER-7392','Release Manager','docs: add release approval check']; if(!(answer&&required.every(x=>answer.includes(x)))) return failed('blame-answer.md에 대상, 작성자, 커밋 메시지를 기록하세요.'); return /submit blame investigation/.test(tipMessage(commits))?passed('blame 조사 답안 확인'):failed('답안은 있지만 "docs: submit blame investigation" 커밋으로 제출되지 않았습니다.'); },
+      async()=>{
+        const answer=await scenarioContent(base,'reports/blame-answer.md','solution/blame');
+        if(!answer) return failed('solution/blame 브랜치에 reports/blame-answer.md를 제출하세요.');
+        const commits=await scenarioCommits(base,'solution/blame',10);
+        if(!/submit blame investigation/.test(tipMessage(commits))) return failed('답안은 있지만 "docs: submit blame investigation" 커밋으로 제출되지 않았습니다.');
+        const origin=await blameOrigin();
+        if(!origin) return unknown('원본 저장소에서 해당 줄의 변경 이력을 확인하지 못했습니다. 잠시 후 다시 시도하세요.');
+        const missing=[];
+        if(!mentionsSha(answer,origin.sha)) missing.push('커밋 SHA(7자리 이상)');
+        if(origin.author&&!answer.includes(origin.author)) missing.push('작성자');
+        if(origin.subject&&!answer.includes(origin.subject)) missing.push('커밋 메시지');
+        if(origin.marker&&!answer.includes(origin.marker)) missing.push('대상 문구');
+        return missing.length?failed(`blame-answer.md에서 확인하지 못한 항목: ${missing.join(', ')}. 해당 줄을 바꾼 커밋을 blame으로 다시 찾으세요.`)
+          :passed(`그 줄을 바꾼 커밋 ${origin.sha.slice(0,7)}(${origin.author})과 일치`); },
       async()=>{ const aFront=await scenarioContent(base,'frontend-task.txt','solution/branch-a'); const aBack=await scenarioContent(base,'backend-task.txt','solution/branch-a'); const bFront=await scenarioContent(base,'frontend-task.txt','solution/branch-b'); const bBack=await scenarioContent(base,'backend-task.txt','solution/branch-b'); const commits=await scenarioCommits(base,'solution/branch-b',10); return aFront?.includes('BRANCH-A-ORIGINAL')&&!aBack&&bFront?.includes('MOVED-AND-AMENDED-2026')&&bBack?.includes('BRANCH-B-BACKEND')&&tipMessage(commits)==='feat: move and refine shared task'&&isLinear(commits)?passed('두 브랜치 작업과 커밋 이동·amend 확인'):failed('branch-a/branch-b 파일 격리와 branch-b 최신 amend 결과를 확인하세요.'); },
       async()=>{ const workflow=await scenarioContent(base,'.github/workflows/release.yml','solution/actions-release'); const release=await api(`${base}/releases/tags/${encodeURIComponent('release-v1.0.0')}`); const asset=!release.missing&&Array.isArray(release.assets)&&release.assets.find(a=>a.name==='scenario-artifact.txt'&&a.state==='uploaded'); const valid=workflow&&workflow.includes('contents: write')&&workflow.includes('gh release create')&&workflow.includes('release-v'); return valid&&!release.missing&&!release.draft&&asset?passed(`Actions Release와 asset 확인: ${release.html_url}`):failed('workflow, release-v1.0.0 공개 Release, scenario-artifact.txt asset을 모두 확인하세요.'); },
       async()=>{ const page=await scenarioContent(base,'docs/index.html','solution/pages'); if(!page?.includes('PAGES-LIVE-2026')) return failed('solution/pages의 docs/index.html에 PAGES-LIVE-2026 문구를 넣으세요.');

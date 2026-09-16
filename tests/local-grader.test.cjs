@@ -124,6 +124,71 @@ test('원본 Fork가 아니면 로컬 정답이 있어도 온라인 시나리오
   const f = fixture(t); f.metadata.fork = false; f.write('instructor-update.md', 'UPSTREAM-SYNC-COMPLETE'); f.commit('copy'); f.git('branch', 'solution/upstream-sync');
   const r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github }); assert.equal(item(r, 'fork').state, 'fail'); assert.equal(item(r, 'upstream').state, 'fail');
 });
+test('diff patch는 저장소의 실제 blob 해시와 내용에 일치해야 한다', async t => {
+  const f = fixture(t);
+  f.write('config/service.conf', 'SERVICE_MODE=development\nTIMEOUT=30\n'); f.commit('base state');
+  const baseSha = f.git('rev-parse', 'HEAD');
+  f.write('config/service.conf', 'SERVICE_MODE=production\nTIMEOUT=60\n');
+  f.write('config/deploy.conf', 'REGION=seoul\nDIFF-TARGET-2026\n'); f.commit('target state');
+  const patch = execFileSync('git', ['-C', f.dir, 'diff', baseSha, 'HEAD'], { encoding: 'utf8' });
+  f.write('reports/change.patch', patch); f.commit('docs: submit diff analysis'); f.git('branch', 'solution/diff');
+  let r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'diff').state, 'pass');
+  // blob은 있지만 patch에서 그 내용을 빼면 오답입니다.
+  f.write('reports/change.patch', patch.replace('+REGION=seoul\n', ''));
+  f.commit('docs: submit diff analysis'); f.git('branch', '-f', 'solution/diff');
+  r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'diff').state, 'fail');
+  assert.match(item(r, 'diff').detail, /실제 blob/);
+  // 존재하지 않는 index 해시는 판정 보류이며 점수도 주지 않습니다.
+  f.write('reports/change.patch', patch.replace(/index [0-9a-f]+\.\.[0-9a-f]+/g, 'index 1111111..2222222'));
+  f.commit('docs: submit diff analysis'); f.git('branch', '-f', 'solution/diff');
+  r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'diff').state, 'unknown');
+  assert.equal(item(r, 'diff').earned, 0);
+  assert.match(item(r, 'diff').detail, /git fetch upstream/);
+});
+
+test('show 보고서는 실제 커밋 SHA·작성자·파일·증거를 요구한다', async t => {
+  const f = fixture(t);
+  f.write('forensic.txt', 'SHOW-EVIDENCE-TEST-1\n'); f.git('add', '.');
+  f.git('-c', 'commit.gpgsign=false', '-c', 'user.name=Git Lab Instructor', '-c', 'user.email=lab@example.invalid',
+    'commit', '-m', 'fix: restore missing deployment configuration');
+  const sha = f.git('rev-parse', 'HEAD');
+  const good = `커밋 SHA: ${sha}\n작성자: Git Lab Instructor\n커밋 메시지: fix: restore missing deployment configuration\n증거 문구: SHOW-EVIDENCE-TEST-1\n변경 파일: forensic.txt\n`;
+  f.write('reports/show-report.md', good); f.commit('docs: report inspected commit'); f.git('branch', 'solution/show');
+  let r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'show').state, 'pass');
+  assert.equal(item(r, 'show').evidence.inspected.sha.length >= 7, true);
+  // 화면 예시만 베껴 SHA가 없으면 실패합니다.
+  f.write('reports/show-report.md', good.replace(`커밋 SHA: ${sha}\n`, ''));
+  f.commit('docs: report inspected commit'); f.git('branch', '-f', 'solution/show');
+  r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'show').state, 'fail');
+});
+
+test('blame 답안은 그 줄을 실제로 바꾼 커밋이어야 한다', async t => {
+  const f = fixture(t);
+  f.write('audit-checklist.md', '# 배포 점검표\n- 환경 변수 확인\n'); f.commit('docs: start audit checklist');
+  f.write('audit-checklist.md', '# 배포 점검표\n- 환경 변수 확인\n- 릴리스 승인 코드: BLAME-OWNER-TEST\n'); f.git('add', '.');
+  f.git('-c', 'commit.gpgsign=false', '-c', 'user.name=Release Manager', '-c', 'user.email=rm@example.invalid',
+    'commit', '-m', 'docs: add release approval check');
+  const target = f.git('rev-parse', 'HEAD');
+  f.write('audit-checklist.md', '# 배포 점검표\n- 환경 변수 확인\n- 릴리스 승인 코드: BLAME-OWNER-TEST\n- 모니터링 대시보드 확인\n');
+  f.commit('docs: add monitoring check');
+  const latest = f.git('rev-parse', 'HEAD');
+  f.write('reports/blame-answer.md', `대상: BLAME-OWNER-TEST\n커밋 SHA: ${target}\n작성자: Release Manager\n커밋 메시지: docs: add release approval check\n`);
+  f.commit('docs: submit blame investigation'); f.git('branch', 'solution/blame');
+  let r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'blame').state, 'pass');
+  // 그 줄을 바꾸지 않은 최신 커밋을 적으면 실패합니다.
+  f.write('reports/blame-answer.md', `대상: BLAME-OWNER-TEST\n커밋 SHA: ${latest}\n작성자: Test Student\n커밋 메시지: docs: add monitoring check\n`);
+  f.commit('docs: submit blame investigation'); f.git('branch', '-f', 'solution/blame');
+  r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'blame').state, 'fail');
+  assert.match(item(r, 'blame').detail, /바꾼 커밋이 아닙니다/);
+});
+
 test('CLI JSON, 종료 코드, 기존 파일 덮어쓰기 방지', t => {
   const f = fixture(t); const output = path.join(f.dir, 'result.json'); const cli = path.resolve(__dirname, '../bin/grade-local.js');
   const args = [cli, '--repo', f.dir, '--username', 'student', '--offline', '--json', output];
