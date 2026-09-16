@@ -19,7 +19,7 @@ npm run test:local
 npm test
 ```
 
-Windows에서도 실행할 수 있습니다. `/path/to/...`와 `/tmp/...`를 실제 Windows 경로로 바꾸고, 공백이 있으면 경로를 큰따옴표로 감싸세요.
+Windows에서도 실행할 수 있습니다. `/path/to/...`와 `/tmp/...`를 실제 Windows 경로로 바꾸고, 공백이나 한글이 있으면 경로를 큰따옴표로 감싸세요. 검증기는 셸을 거치지 않고 `git`을 직접 실행하므로 cmd·PowerShell·Git Bash 어디서나 동작합니다.
 
 `--username`을 생략하면 온라인에서는 인증 계정을 사용합니다. `--github owner/repo`로 대상 저장소를 지정할 수 있지만 origin이 존재하면 같은 저장소여야 합니다. HTTPS 및 SSH GitHub origin을 지원합니다. 기본 브랜치는 `--branch`로 지정한 값이 가장 우선하고, 지정하지 않으면 온라인에서는 GitHub의 기본 브랜치, 오프라인에서는 `main`을 사용합니다.
 

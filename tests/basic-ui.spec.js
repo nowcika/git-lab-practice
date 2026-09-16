@@ -110,3 +110,30 @@ test('Release 시나리오가 Actions 활성화와 재시도 절차를 안내한
   await expect(usage).toContainText('git push는 태그를 올리지 않음');
   await expect(usage).toContainText('gh release delete');
 });
+
+test('Windows 사용자를 위한 안내와 대체 명령이 표시된다', async ({ page }) => {
+  await page.goto('/#scenarios');
+  await expect(page.locator('.scenario-note')).toContainText('Git Bash');
+  await expect(page.locator('.scenario-note')).toContainText('UTF-8');
+  // heredoc·mkdir -p·리다이렉션을 쓰는 시나리오에는 PowerShell 대체 명령이 붙는다.
+  for (const id of ['show', 'blame', 'release', 'pages', 'diff', 'patch']) {
+    const usage = page.locator(`#scenario-${id} details.usage`);
+    await expect(usage, id).toContainText('Windows에서 실행할 때');
+  }
+  const card = page.locator('#scenario-show');
+  await card.locator('summary').first().click();
+  const show = card.locator('details.usage');
+  await show.locator('summary').click();
+  await expect(show).toContainText('Set-Content -Encoding utf8NoBOM');
+  await expect(show).toContainText('New-Item -ItemType Directory -Force');
+  // 셸 전용 구문이 없는 시나리오에는 붙지 않는다.
+  await expect(page.locator('#scenario-tag details.usage')).not.toContainText('Windows에서 실행할 때');
+});
+
+test('Windows 설치 안내에 터미널과 인코딩 주의사항이 있다', async ({ page }) => {
+  await page.goto('/#setup');
+  const windows = page.locator('#manual-git .os-guides details').first();
+  await expect(windows).toContainText('Git Bash');
+  await expect(windows).toContainText('UTF-8(BOM 없음)');
+  await expect(windows).toContainText('core.autocrlf');
+});

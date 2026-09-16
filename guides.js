@@ -5,10 +5,21 @@ if (setupRoot) setupRoot.innerHTML = `
 <div class="manual-shot"><img src="assets/git-install.png" alt="Git 공식 운영체제 선택 화면"><i class="pin install-p1">1</i><i class="pin install-p2">2</i><i class="pin install-p3">3</i></div>
 <div class="manual-callouts"><span><b>1</b><strong>Windows</strong>회사·교육장 PC 대부분은 이 메뉴를 선택합니다.</span><span><b>2</b><strong>macOS</strong>MacBook 또는 iMac 사용자는 이 메뉴를 선택합니다.</span><span><b>3</b><strong>Linux</strong>Ubuntu·Fedora 등 배포판별 명령을 확인합니다.</span></div>
 <div class="os-guides">
-<details open><summary>Windows 설치 <small>처음 설치할 때 권장</small></summary><div><ol><li>공식 Windows 페이지에서 PC에 맞는 설치 파일을 받습니다. 대부분의 Intel·AMD PC는 <strong>x64 Setup</strong>, ARM 기반 PC만 <strong>ARM64 Setup</strong>입니다.</li><li>다운로드한 설치 파일을 실행합니다. Windows의 변경 허용 질문이 나오면 게시자가 Git for Windows인지 확인하고 허용합니다.</li><li>수업용 기본 설치에서는 구성 요소, 기본 편집기, PATH, HTTPS, 줄바꿈 등의 옵션을 이해하지 못한다면 설치 프로그램의 기본값을 유지해도 됩니다.</li><li>설치 완료 후 기존 터미널을 닫고 <strong>Git Bash</strong> 또는 PowerShell을 새로 엽니다.</li><li><code>git --version</code>을 실행합니다. 이어서 아래 사용자 정보를 본인 값으로 설정합니다.</li></ol><div class="manual-shot inline-shot"><img src="assets/git-windows.png" alt="Git for Windows 공식 다운로드 화면"><i class="pin win-p1">1</i><i class="pin win-p2">2</i></div><div class="inline-caption"><span><b>1</b> 일반적인 Windows PC는 최신 x64 설치 파일</span><span><b>2</b> 명령 설치를 선호하면 화면의 winget 명령</span></div><pre><code>git --version
+<details open><summary>Windows 설치 <small>처음 설치할 때 권장</small></summary><div><ol><li>공식 Windows 페이지에서 PC에 맞는 설치 파일을 받습니다. 대부분의 Intel·AMD PC는 <strong>x64 Setup</strong>, ARM 기반 PC만 <strong>ARM64 Setup</strong>입니다.</li><li>다운로드한 설치 파일을 실행합니다. Windows의 변경 허용 질문이 나오면 게시자가 Git for Windows인지 확인하고 허용합니다.</li><li>수업용 기본 설치에서는 구성 요소, 기본 편집기, PATH, HTTPS, 줄바꿈 등의 옵션을 이해하지 못한다면 설치 프로그램의 기본값을 유지해도 됩니다.</li><li>설치 완료 후 기존 터미널을 닫고 <strong>Git Bash</strong>를 새로 엽니다. 이 실습의 모든 명령은 Git Bash 기준입니다. PowerShell과 명령 프롬프트는 <code>mkdir -p</code>나 <code>cat &gt; 파일 &lt;&lt;'EOF'</code> 같은 문법을 지원하지 않고, <code>&gt;</code>로 만든 파일이 UTF-16으로 저장돼 채점에 실패할 수 있습니다.</li><li><code>git --version</code>을 실행합니다. 이어서 아래 사용자 정보를 본인 값으로 설정합니다.</li></ol><div class="manual-shot inline-shot"><img src="assets/git-windows.png" alt="Git for Windows 공식 다운로드 화면"><i class="pin win-p1">1</i><i class="pin win-p2">2</i></div><div class="inline-caption"><span><b>1</b> 일반적인 Windows PC는 최신 x64 설치 파일</span><span><b>2</b> 명령 설치를 선호하면 화면의 winget 명령</span></div><pre><code>git --version
 git config --global user.name "홍길동"
 git config --global user.email "GitHub에 등록한 이메일"
-git config --global --list</code></pre><div class="manual-check"><strong>완료 확인</strong><code>git version 2.x.x</code>가 나오고 마지막 명령에서 이름과 이메일을 찾을 수 있어야 합니다.</div><div class="manual-error"><strong>문제 해결</strong><span>‘git을 찾을 수 없음’ → 터미널을 완전히 다시 열기 → 그래도 안 되면 Git 재설치 시 PATH 옵션 확인</span><span>설치 파일 실행 차단 → 공식 git-scm.com에서 받은 파일인지 확인하고 조직 PC라면 관리자에게 설치 요청</span><span>잘못된 이름·이메일 → 같은 config 명령을 올바른 값으로 다시 실행</span></div></div></details>
+
+# Windows 권장 설정: 줄바꿈 자동 변환과 한글 파일명 표시
+git config --global core.autocrlf true
+git config --global core.quotepath false
+
+git config --global --list</code></pre><div class="manual-check"><strong>완료 확인</strong><code>git version 2.x.x</code>가 나오고 마지막 명령에서 이름과 이메일을 찾을 수 있어야 합니다.</div>
+<div class="manual-error"><strong>Windows에서 특히 주의할 것</strong>
+<span><strong>터미널:</strong> Git Bash를 사용하세요. 시작 메뉴에서 <code>Git Bash</code>로 찾거나 폴더에서 마우스 오른쪽 → <strong>Open Git Bash here</strong>.</span>
+<span><strong>파일 인코딩:</strong> 실습 파일은 <strong>UTF-8(BOM 없음)</strong>으로 저장하세요. 메모장은 다른 이름으로 저장 화면에서 인코딩을 <code>UTF-8</code>로 지정합니다. ANSI(CP949)로 저장하면 한글 문구를 채점기가 읽지 못해 0점이 됩니다.</span>
+<span><strong>PowerShell을 써야 한다면:</strong> <code>&gt;</code> 대신 <code>| Out-File -Encoding utf8NoBOM</code>을 쓰세요. Windows PowerShell 5.1에는 <code>utf8NoBOM</code>이 없으므로 <code>[IO.File]::WriteAllText(...)</code>를 쓰거나 PowerShell 7 이상을 설치해야 합니다.</span>
+<span><strong>줄바꿈:</strong> 설치 기본값 <code>core.autocrlf true</code>를 그대로 두면 됩니다. <code>git config --global core.autocrlf</code>로 확인할 수 있습니다.</span>
+<span><strong>한글 경로:</strong> 저장소 폴더 경로에 공백이나 한글이 있으면 명령에서 큰따옴표로 감싸세요.</span></div><div class="manual-error"><strong>문제 해결</strong><span>‘git을 찾을 수 없음’ → 터미널을 완전히 다시 열기 → 그래도 안 되면 Git 재설치 시 PATH 옵션 확인</span><span>설치 파일 실행 차단 → 공식 git-scm.com에서 받은 파일인지 확인하고 조직 PC라면 관리자에게 설치 요청</span><span>잘못된 이름·이메일 → 같은 config 명령을 올바른 값으로 다시 실행</span></div></div></details>
 <details><summary>macOS 설치 <small>Command Line Tools 또는 Homebrew</small></summary><div><ol><li><strong>가장 간단한 방법:</strong> Terminal 앱에서 <code>xcode-select --install</code>을 실행하고 설치 창을 완료합니다.</li><li>Homebrew를 이미 사용한다면 <code>brew install git</code>으로 설치할 수도 있습니다.</li><li>Terminal을 새로 열어 <code>git --version</code>으로 확인한 뒤 사용자 이름과 이메일을 Windows 안내와 같은 명령으로 설정합니다.</li></ol><pre><code>xcode-select --install
 # Homebrew 사용자는 다음 방법도 가능
 brew install git
@@ -47,6 +58,7 @@ const guides = [
     '저장 후 <code>git add README.md</code>, commit, push를 차례로 실행합니다.'
   ], cmd:'# README.md 내용 예시\n# 나의 Git 학습 목표\n브랜치를 만들어 변경 사항을 안전하게 제안한다.\ngit-lab-사용자이름\n\ngit add README.md\ngit commit -m "docs: add learning goal"\ngit push', success:'기본 브랜치의 루트 README.md에서 지정 문구가 보입니다.', trouble:[
     '<code>readme.txt</code>나 하위 폴더의 README는 대상이 아닙니다. 파일 이름과 위치를 확인하세요.',
+    'Windows에서 파일을 ANSI(CP949)로 저장하면 한글이 깨져 채점에 실패합니다. <strong>UTF-8(BOM 없음)</strong>으로 저장하세요.',
     '문구의 ‘사용자이름’을 실제 GitHub 사용자 이름으로 바꾸었는지 확인하세요. 대소문자는 상관없습니다.',
     '<code>git status</code>에 변경이 남아 있거나 로컬에만 커밋했다면 GitHub에 보이지 않습니다. push 결과를 확인하세요.',
     '다른 브랜치에서만 수정했다면 기본 브랜치에 반영되기 전까지 통과하지 않습니다.'

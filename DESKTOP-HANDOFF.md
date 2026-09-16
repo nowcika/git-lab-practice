@@ -30,6 +30,8 @@ $env:PLAYWRIGHT_BROWSERS_PATH = "0"
 npx playwright install chromium
 ```
 
+설치 이후의 `npm run test:*` 명령에는 환경 변수를 따로 지정하지 않아도 됩니다.
+
 `PLAYWRIGHT_BROWSERS_PATH=0`은 브라우저를 `node_modules` 안에 설치하라는 뜻입니다. npm 스크립트가 같은 값을 사용하므로 **반드시 이 환경변수와 함께 설치해야** 합니다. 환경변수 없이 설치하면 브라우저는 `~/.cache/ms-playwright`에 들어가고 `npm test`가 찾지 못합니다.
 
 Linux 시스템 라이브러리가 부족하면 `PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install --with-deps chromium`을 사용합니다.
@@ -51,6 +53,9 @@ $env:GH_TOKEN = gh auth token
 ```
 
 ## 실행
+
+npm 스크립트는 Windows(cmd·PowerShell)와 macOS·Linux에서 모두 같은 명령으로 동작합니다.
+환경 변수는 `bin/run-tests.js`가 대신 설정하므로 셸 문법 차이를 신경 쓰지 않아도 됩니다.
 
 ```bash
 npm run test:local        # 로컬 검증기 단위 테스트 (브라우저·네트워크 불필요)

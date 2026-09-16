@@ -342,3 +342,56 @@ committer = GitHub <noreply@github.com>   (verified: true, reason: valid)
   타인 이슈·PR 4가지 차단 테스트 추가)
 - Playwright 12개(chromium) 통과
 - **예제 저장소 `nowcika/git-lab-example`는 강화된 기준에서도 100점 유지**
+
+
+## 2026-09-16 (7차) — Windows 실습 환경 대응
+
+명령을 감사한 결과 Windows 기본 셸에서 **20개 중 9개 시나리오가 그대로는 동작하지
+않았습니다.** 설치 안내가 "Git Bash 또는 PowerShell"이라고 열어 두어 문제가 더 컸습니다.
+
+### 발견한 문제
+
+| 구분 | 내용 | 영향 |
+| --- | --- | --- |
+| heredoc | `cat > 파일 <<'EOF'`는 PowerShell·cmd에 없음 | show, blame, release, pages |
+| `mkdir -p` | `-p` 옵션 없음 | diff, show, blame, release, pages |
+| **`>` 인코딩** | Windows PowerShell 5.1은 `>`를 **UTF-16LE**로 저장 | external, reflog, diff, patch, workflow |
+| `less` | 없음 | patch |
+| `rm` | cmd에 없음 | patch |
+| 파일 인코딩 | 한글 마커를 ANSI(CP949)로 저장하면 채점 실패 | conflict, rebaseconflict |
+| npm 스크립트 | `VAR=값 명령` 문법이 cmd·PowerShell에서 실패 | `npm test` 전체 |
+
+특히 `>` 인코딩은 강화된 diff 검증(blob 해시·라인 대조)과 `git am`을 확실히 깨뜨립니다.
+`Out-File -Encoding utf8`도 5.1에서는 BOM을 붙여 `^diff --git` 카운트가 어긋납니다.
+
+### 수정
+
+1. **Git Bash를 기본으로 명시** — 설치 안내에서 "또는 PowerShell"을 빼고, 시나리오
+   목록 상단에 Windows 안내 박스를 추가했습니다.
+2. **PowerShell 대체 명령 자동 병기** — `windowsUsage()`가 각 시나리오의 명령을 읽어
+   막히는 구문을 판별하고, 해당 시나리오에만 "Windows에서 실행할 때" 활용 사례를
+   덧붙입니다. 현재 9개 시나리오에 붙고, 문제가 없는 11개에는 붙지 않습니다.
+   `Set-Content -Encoding utf8NoBOM`, `New-Item -ItemType Directory -Force`,
+   `Out-File -Encoding utf8NoBOM`, here-string, `Get-Content | more` 등을 안내하고,
+   Windows PowerShell 5.1에는 `utf8NoBOM`이 없다는 점과 `[IO.File]::WriteAllText`
+   대안까지 적었습니다.
+3. **인코딩·줄바꿈 안내 추가** — 설치 가이드에 "Windows에서 특히 주의할 것" 블록을
+   넣어 터미널, UTF-8(BOM 없음) 저장, PowerShell 대체, `core.autocrlf`, 한글 경로를
+   설명합니다. 권장 설정에 `core.autocrlf`, `core.quotepath`를 추가했습니다.
+4. **npm 스크립트 크로스 플랫폼화** — `bin/run-tests.js`가 `PLAYWRIGHT_BROWSERS_PATH`를
+   설정하고 Playwright CLI를 자식 프로세스로 실행합니다. 추가 의존성 없이 cmd·PowerShell·
+   bash에서 같은 `npm run test:*` 명령이 동작합니다. 하위 명령이 없으면 `test`를
+   자동으로 붙이므로 `--project=api` 같은 인자를 그대로 넘길 수 있습니다.
+
+### 확인한 것 (문제 아님)
+
+- CRLF: 설치 기본값 `core.autocrlf=true`가 커밋 시 LF로 정규화하고, 채점기도 `trim()`으로
+  `\r`을 흡수하므로 patch 파일이 CRLF여도 통과합니다.
+- 로컬 검증기: `spawnSync`로 `git`을 셸 없이 직접 실행해 인용·경로 문제가 없습니다.
+- `bin/static-server.js`: `path.join`과 루트 경계 검사를 써서 Windows 경로에서도 동작합니다.
+
+### 검증
+
+- 로컬 검증기 단위 테스트 29개 통과
+- Playwright 14개(chromium) 통과 — Windows 안내 박스, 9개 시나리오의 대체 명령,
+  설치 가이드의 인코딩 주의사항을 검사하는 테스트 2개 추가

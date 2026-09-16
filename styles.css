@@ -31,3 +31,7 @@
   .guide.flash{animation:none}
   *,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
+
+/* 시나리오 상단 Windows 안내 */
+.scenario-note{margin:12px 0 0!important;padding:10px 12px;border-left:3px solid var(--amber);background:#332a1d;border-radius:7px;color:#d9c49e!important;font-size:12px!important;max-width:none!important;line-height:1.7}
+.scenario-note code{color:#f0d4a6}

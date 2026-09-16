@@ -5,12 +5,12 @@
   "main": "lib/local-grader.js",
   "scripts": {
     "serve": "node bin/static-server.js 4173",
-    "test": "npm run test:local && PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test",
+    "test": "npm run test:local && node bin/run-tests.js",
     "test:local": "node --test tests/local-grader.test.cjs",
-    "test:scenario": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test --project=api",
-    "test:ui": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test --project=chromium",
-    "test:ui:headed": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js test --project=chromium --headed",
-    "report": "PLAYWRIGHT_BROWSERS_PATH=0 node node_modules/@playwright/test/cli.js show-report",
+    "test:scenario": "node bin/run-tests.js --project=api",
+    "test:ui": "node bin/run-tests.js --project=chromium",
+    "test:ui:headed": "node bin/run-tests.js --project=chromium --headed",
+    "report": "node bin/run-tests.js show-report",
     "grade:local": "node bin/grade-local.js"
   },
   "repository": {

@@ -701,6 +701,24 @@ function scenarioAnswerUrl(id) {
   return `https://github.com/${OFFICIAL_ANSWER}/tree/${refs[id]}`;
 }
 
+// Windows 기본 셸(PowerShell·명령 프롬프트)에서 막히는 구문이 있으면 대체 명령을 덧붙입니다.
+function windowsUsage(commands) {
+  const text = String(commands || '');
+  const lines = text.split('\n').filter(line => !line.trim().startsWith('#'));
+  const has = (re) => lines.some(line => re.test(line));
+  const cases = [];
+  if (has(/<<\s*'?[A-Za-z]+'?\s*$/)) cases.push(["$내용 = @'  …여러 줄…  '@ ; $내용 | Set-Content -Encoding utf8NoBOM 파일", "heredoc(<< 'EOF')은 PowerShell에 없습니다. here-string(@' 로 열고 줄 맨 앞의 '@ 로 닫기)으로 대신합니다."]);
+  if (has(/\bmkdir\s+-p\b/)) cases.push(['New-Item -ItemType Directory -Force 폴더', 'mkdir -p 대신 사용합니다. 폴더가 이미 있어도 오류가 나지 않습니다.']);
+  if (has(/\becho\b[^|]*>/)) cases.push([`'내용' | Set-Content -Encoding utf8NoBOM 파일`, 'echo ... > 파일 대신 사용합니다.']);
+  if (has(/[^>|]>\s*[\w./-]+\s*$/)) cases.push(['명령 | Out-File -Encoding utf8NoBOM 파일', 'Windows PowerShell 5.1의 > 는 UTF-16으로 저장해 채점에 실패합니다. 반드시 인코딩을 지정하세요.']);
+  if (has(/\bless\b/)) cases.push(['Get-Content 파일 | more', 'less가 없습니다.']);
+  if (has(/^\s*rm\s/)) cases.push(['Remove-Item 파일', 'cmd.exe에는 rm이 없습니다(PowerShell은 별칭이 있습니다).']);
+  if (!cases.length) return null;
+  cases.unshift(['Git Bash에서 실행하세요 (권장)', 'Git for Windows에 함께 설치됩니다. 이 시나리오의 명령을 고치지 않고 그대로 붙여넣을 수 있습니다.']);
+  cases.push(['Windows PowerShell 5.1에는 utf8NoBOM이 없습니다', '[IO.File]::WriteAllText("파일", "내용", [Text.UTF8Encoding]::new($false)) 로 BOM 없는 UTF-8을 직접 저장하거나, PowerShell 7 이상 또는 Git Bash를 사용하세요.']);
+  return ['Windows에서 실행할 때', cases];
+}
+
 function usageHtml(usage) {
   if (!Array.isArray(usage) || !usage.length) return '';
   const groups = usage.map(([name, cases]) => `<div class="usage-group"><h5>${escapeHtml(name)}</h5><dl>${
@@ -710,9 +728,9 @@ function usageHtml(usage) {
 }
 
 if (scenarioRoot) {
-  scenarioRoot.innerHTML = `<div class="scenario-start"><div><span class="scenario-kicker">START HERE</span><h3>하나의 Fork에서 19가지 문제를 해결합니다</h3><p>각 시나리오는 독립된 <code>solution/*</code> 브랜치를 사용하므로 순서대로 진행하거나 필요한 항목만 연습할 수 있습니다. 각 카드의 <strong>명령어 활용 사례</strong>에서 옵션별 차이를 함께 확인하세요.</p></div><div class="scenario-start-actions"><a href="https://github.com/nowcika/git-scenario-lab/fork" target="_blank" rel="noopener noreferrer">① 원본 저장소 Fork ↗</a><a href="https://github.com/nowcika/git-scenario-lab" target="_blank" rel="noopener noreferrer">원본 구조 보기 ↗</a><a href="https://github.com/nowcika/git-scenario-library" target="_blank" rel="noopener noreferrer">외부 저장소 보기 ↗</a><a href="https://github.com/${OFFICIAL_ANSWER}" target="_blank" rel="noopener noreferrer">전체 정답 저장소 ↗</a></div></div>
+  scenarioRoot.innerHTML = `<div class="scenario-start"><div><span class="scenario-kicker">START HERE</span><h3>하나의 Fork에서 19가지 문제를 해결합니다</h3><p>각 시나리오는 독립된 <code>solution/*</code> 브랜치를 사용하므로 순서대로 진행하거나 필요한 항목만 연습할 수 있습니다. 각 카드의 <strong>명령어 활용 사례</strong>에서 옵션별 차이를 함께 확인하세요.</p><p class="scenario-note"><strong>Windows 사용자</strong>: 모든 명령은 <strong>Git Bash</strong>에서 실행하세요. PowerShell과 명령 프롬프트는 <code>mkdir -p</code>·heredoc을 지원하지 않고, <code>&gt;</code>로 만든 파일이 UTF-16으로 저장돼 채점에 실패합니다. 파일은 <strong>UTF-8(BOM 없음)</strong>으로 저장하세요.</p></div><div class="scenario-start-actions"><a href="https://github.com/nowcika/git-scenario-lab/fork" target="_blank" rel="noopener noreferrer">① 원본 저장소 Fork ↗</a><a href="https://github.com/nowcika/git-scenario-lab" target="_blank" rel="noopener noreferrer">원본 구조 보기 ↗</a><a href="https://github.com/nowcika/git-scenario-library" target="_blank" rel="noopener noreferrer">외부 저장소 보기 ↗</a><a href="https://github.com/${OFFICIAL_ANSWER}" target="_blank" rel="noopener noreferrer">전체 정답 저장소 ↗</a></div></div>
   <div class="scenario-flow"><span><b>1</b> Fork</span><i>→</i><span><b>2</b> Clone</span><i>→</i><span><b>3</b> Remote 연결</span><i>→</i><span><b>4</b> 문제 해결</span><i>→</i><span><b>5</b> Push·채점</span></div>
-  <div class="scenario-list">${scenarioDefinitions.map((s, index) => `<details class="scenario" id="scenario-${s.id}" ${s.id==='fork'?'open':''}><summary><span class="scenario-no">${s.no}</span><div><small>${escapeHtml(s.level)}</small><strong>${escapeHtml(s.title)}</strong><p>${escapeHtml(s.goal)}</p></div><b>${s.points}점</b></summary><div class="scenario-body"><div><h4>실행 순서</h4><pre><code data-commands="${index}"></code><button class="scenario-copy" type="button" aria-label="${escapeHtml(s.title)} 명령 복사">명령 복사</button></pre><p class="scenario-verify"><strong>자동 채점 기준</strong>${escapeHtml(s.verify)}</p>${usageHtml(s.usage)}</div><div><h4>막혔을 때 확인</h4><ul>${s.checks.map(c=>`<li>${c}</li>`).join('')}</ul><div class="scenario-resource-links"><a class="scenario-doc" href="https://git-scm.com/docs" target="_blank" rel="noopener noreferrer">Git 공식 명령 문서 ↗</a><a class="scenario-answer" href="${scenarioAnswerUrl(s.id)}" target="_blank" rel="noopener noreferrer">정답 결과 보기 ↗</a></div></div></div></details>`).join('')}</div>
+  <div class="scenario-list">${scenarioDefinitions.map((s, index) => `<details class="scenario" id="scenario-${s.id}" ${s.id==='fork'?'open':''}><summary><span class="scenario-no">${s.no}</span><div><small>${escapeHtml(s.level)}</small><strong>${escapeHtml(s.title)}</strong><p>${escapeHtml(s.goal)}</p></div><b>${s.points}점</b></summary><div class="scenario-body"><div><h4>실행 순서</h4><pre><code data-commands="${index}"></code><button class="scenario-copy" type="button" aria-label="${escapeHtml(s.title)} 명령 복사">명령 복사</button></pre><p class="scenario-verify"><strong>자동 채점 기준</strong>${escapeHtml(s.verify)}</p>${usageHtml(windowsUsage(s.commands) ? [...(s.usage || []), windowsUsage(s.commands)] : s.usage)}</div><div><h4>막혔을 때 확인</h4><ul>${s.checks.map(c=>`<li>${c}</li>`).join('')}</ul><div class="scenario-resource-links"><a class="scenario-doc" href="https://git-scm.com/docs" target="_blank" rel="noopener noreferrer">Git 공식 명령 문서 ↗</a><a class="scenario-answer" href="${scenarioAnswerUrl(s.id)}" target="_blank" rel="noopener noreferrer">정답 결과 보기 ↗</a></div></div></div></details>`).join('')}</div>
   <div class="scenario-grade"><div class="scenario-grade-head"><div><span class="eyebrow">SCENARIO GRADER</span><h3>내 Fork 결과 채점</h3><p>Fork가 Public이어야 인증 없이 확인할 수 있습니다. 채점 1회에 GitHub API를 약 55회 사용합니다.</p></div><button id="scenarioGradeButton" class="grade-button">시나리오 채점하기 <span>→</span></button></div><label for="scenarioRepoUrl">내 Fork 저장소 URL</label><input id="scenarioRepoUrl" type="url" placeholder="https://github.com/내사용자이름/git-scenario-lab" autocomplete="url"><div id="scenarioStatus" role="status" aria-live="polite"></div><div id="scenarioResults" hidden><div class="scenario-score"><strong id="scenarioScore">0</strong><span>/ 325점</span><p id="scenarioScoreMessage"></p></div><div id="scenarioResultList" class="result-list"></div></div></div>`;
   // 명령 블록은 innerHTML이 아니라 textContent로 넣어 <브랜치> 같은 표기가 사라지지 않게 합니다.
   scenarioRoot.querySelectorAll('code[data-commands]').forEach(code => {
