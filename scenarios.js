@@ -483,11 +483,25 @@ git push origin release-v1.0.0
         ['git tag -d <태그>', '로컬 태그만 지웁니다.']
       ]],
       ['워크플로 점검', [
-        ['gh run list --limit 5', '최근 실행 결과를 터미널에서 확인합니다.'],
+        ['gh run list --limit 5', '최근 실행 결과를 터미널에서 확인합니다. 목록이 비어 있으면 아직 한 번도 실행되지 않은 것입니다.'],
         ['gh run watch', '실행 중인 워크플로를 실시간으로 지켜봅니다.'],
-        ['gh run view --log-failed', '실패한 단계의 로그만 봅니다.'],
-        ['gh release view <태그>', '만들어진 Release와 첨부 파일을 확인합니다.'],
-        ['gh release delete <태그>', '잘못 만든 Release를 정리합니다.']
+        ['gh run view --log-failed', '실패한 단계의 로그만 봅니다. YAML 들여쓰기 오류가 여기서 보입니다.'],
+        ['gh workflow list', '저장소가 인식한 workflow 목록입니다. 없으면 파일 위치나 확장자를 확인하세요.'],
+        ['gh release view <태그>', '만들어진 Release와 첨부 파일을 확인합니다.']
+      ]],
+      ['자주 막히는 지점', [
+        ['Fork는 Actions가 꺼져 있음', '저장소 Actions 탭에서 "I understand my workflows, go ahead and enable them"을 눌러야 실행됩니다. 누르지 않으면 태그를 밀어도 아무 일도 일어나지 않습니다.'],
+        ['순서가 중요', 'workflow를 먼저 push한 뒤 태그를 만듭니다. 태그가 workflow 없는 커밋을 가리키면 실행되지 않습니다.'],
+        ['git push는 태그를 올리지 않음', 'git push origin release-v1.0.0 을 따로 실행해야 합니다.'],
+        ['경로 확인', '.github/workflows/ 아래에 있어야 하고 확장자는 .yml 또는 .yaml 입니다.'],
+        ['YAML 문법', '탭 문자는 쓸 수 없습니다. 들여쓰기는 공백만 사용하세요.']
+      ]],
+      ['실패 후 다시 시도하기', [
+        ['gh release delete release-v1.0.0 --yes', '이미 만들어진 Release를 지웁니다. 남아 있으면 gh release create가 실패합니다.'],
+        ['git push --delete origin release-v1.0.0', '원격 태그를 지웁니다.'],
+        ['git tag -d release-v1.0.0', '로컬 태그를 지웁니다.'],
+        ['git tag -a release-v1.0.0 -m "retry" && git push origin release-v1.0.0', '고친 뒤 다시 태그를 밀면 workflow가 새로 실행됩니다.'],
+        ['gh run rerun <run-id>', '코드 변경 없이 같은 실행을 다시 돌립니다.']
       ]]
     ] },
   { id:'pages', no:'16', title:'GitHub Pages로 홈페이지 서비스하기', points:25, level:'Deploy · Pages', goal:'Fork의 solution/pages 브랜치에 정적 홈페이지를 만들고 /docs 폴더를 공개 서비스합니다.', commands:`git fetch upstream
@@ -499,19 +513,66 @@ git add docs/index.html docs/.nojekyll
 git commit -m "feat: publish scenario homepage"
 git push -u origin solution/pages
 
-# GitHub 저장소 화면에서 설정합니다.
+# 아래 두 경로 중 하나를 고르면 됩니다. 채점은 실제 사이트 응답으로 판정하므로
+# 어느 쪽을 써도 통과합니다. 한 저장소에 Pages 사이트는 하나뿐이라 동시에는 못 씁니다.
+
+# ── 경로 A. 브랜치에서 바로 배포 (가장 간단, 공식 정답이 쓰는 방식) ──
 # Settings → Pages → Build and deployment
-# Source: Deploy from a branch
-# Branch: solution/pages
-# Folder: /docs
-# Save
-# 배포 완료 후 표시되는 Visit site를 엽니다.`, checks:['Fork가 Public이고 이메일 인증이 완료됐는가?', 'docs 폴더 최상위에 index.html이 있는가?', 'Pages source가 solution/pages와 /docs로 정확히 설정됐는가?', 'Actions의 pages build and deployment가 완료됐는가?', 'Visit site에서 PAGES-LIVE-2026 문구가 보이는가?', '<a href="https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site" target="_blank" rel="noopener noreferrer">GitHub Pages 공식 설정 안내 ↗</a>'], verify:'홈페이지 파일의 표시 문구와 실제 Pages 주소의 응답 내용을 검사합니다.',
+#   Source: Deploy from a branch
+#   Branch: solution/pages   Folder: /docs   → Save
+
+# ── 경로 B. GitHub Actions로 배포 (GitHub 공식 권장 방식) ──
+mkdir -p .github/workflows
+cat > .github/workflows/pages.yml <<'YAML'
+name: Deploy Pages
+on:
+  push:
+    branches: ['solution/pages']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4
+YAML
+
+git add .github/workflows/pages.yml
+git commit -m "ci: deploy pages with actions"
+git push
+# Settings → Pages → Source를 'GitHub Actions'로 바꾸면 workflow가 배포합니다.
+
+# 배포 완료 후 표시되는 Visit site를 엽니다.`, checks:['Fork가 Public이고 이메일 인증이 완료됐는가?', 'docs 폴더 최상위에 index.html이 있는가?', '경로 A라면 Pages source가 solution/pages와 /docs로 설정됐는가?', '경로 B라면 Settings → Pages의 Source가 GitHub Actions이고 pages.yml이 push됐는가?', 'Actions 탭에서 배포 workflow가 완료됐는가?', 'Visit site에서 PAGES-LIVE-2026 문구가 보이는가?', '경로 A와 B는 동시에 쓸 수 없습니다. 하나를 고르세요.', '<a href="https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site" target="_blank" rel="noopener noreferrer">GitHub Pages 공식 설정 안내 ↗</a>'], verify:'docs/index.html의 표시 문구와 실제 Pages 주소의 응답 내용을 검사합니다. 브랜치 배포와 Actions 배포 중 어느 방식이든 인정하며, 토큰을 입력하면 실제 배포 방식도 함께 표시합니다.',
     usage:[
       ['배포 소스 고르기', [
         ['Branch + /(root)', '브랜치 최상위를 그대로 서비스합니다. 가장 단순합니다.'],
-        ['Branch + /docs', '소스와 홈페이지를 한 브랜치에서 폴더로 나눕니다. 이 과제의 방식입니다.'],
+        ['Branch + /docs', '소스와 홈페이지를 한 브랜치에서 폴더로 나눕니다. 이 과제의 경로 A입니다.'],
         ['gh-pages 브랜치', '빌드 결과만 담는 전용 브랜치를 쓰는 전통적 방식입니다.'],
-        ['GitHub Actions', '빌드 과정을 워크플로로 직접 정의합니다. 프레임워크 사이트에 적합합니다.']
+        ['GitHub Actions', '빌드 과정을 워크플로로 정의합니다. 이 과제의 경로 B이며 GitHub 공식 권장 방식입니다.'],
+        ['한 저장소에 사이트는 하나', '경로 A와 B는 같은 Pages 사이트를 두고 경쟁합니다. Source를 바꾸면 이전 방식은 중단됩니다.']
+      ]],
+      ['Actions 배포(경로 B) 구성 요소', [
+        ['permissions: pages: write, id-token: write', '배포에 필요한 최소 권한입니다. 빠지면 권한 오류로 실패합니다.'],
+        ['actions/configure-pages@v5', 'Pages 설정을 읽어 빌드 환경을 준비합니다.'],
+        ['actions/upload-pages-artifact@v3 (path: docs)', '배포할 폴더를 artifact로 올립니다. path가 곧 사이트 루트입니다.'],
+        ['actions/deploy-pages@v4', 'artifact를 실제 사이트로 배포합니다.'],
+        ['environment: github-pages', '배포 환경을 지정해야 deploy-pages가 동작합니다.'],
+        ['workflow_dispatch', 'Actions 탭에서 손으로도 실행할 수 있게 해 둡니다. 재배포에 편리합니다.']
       ]],
       ['자주 막히는 지점', [
         ['docs/.nojekyll', '밑줄(_)로 시작하는 폴더·파일이 무시되지 않도록 빈 파일을 둡니다.'],
@@ -565,7 +626,7 @@ if (scenarioRoot) {
   scenarioRoot.innerHTML = `<div class="scenario-start"><div><span class="scenario-kicker">START HERE</span><h3>하나의 Fork에서 17가지 문제를 해결합니다</h3><p>각 시나리오는 독립된 <code>solution/*</code> 브랜치를 사용하므로 순서대로 진행하거나 필요한 항목만 연습할 수 있습니다. 각 카드의 <strong>명령어 활용 사례</strong>에서 옵션별 차이를 함께 확인하세요.</p></div><div class="scenario-start-actions"><a href="https://github.com/nowcika/git-scenario-lab/fork" target="_blank" rel="noopener noreferrer">① 원본 저장소 Fork ↗</a><a href="https://github.com/nowcika/git-scenario-lab" target="_blank" rel="noopener noreferrer">원본 구조 보기 ↗</a><a href="https://github.com/nowcika/git-scenario-library" target="_blank" rel="noopener noreferrer">외부 저장소 보기 ↗</a><a href="https://github.com/${OFFICIAL_ANSWER}" target="_blank" rel="noopener noreferrer">전체 정답 저장소 ↗</a></div></div>
   <div class="scenario-flow"><span><b>1</b> Fork</span><i>→</i><span><b>2</b> Clone</span><i>→</i><span><b>3</b> Remote 연결</span><i>→</i><span><b>4</b> 문제 해결</span><i>→</i><span><b>5</b> Push·채점</span></div>
   <div class="scenario-list">${scenarioDefinitions.map((s, index) => `<details class="scenario" id="scenario-${s.id}" ${s.id==='fork'?'open':''}><summary><span class="scenario-no">${s.no}</span><div><small>${escapeHtml(s.level)}</small><strong>${escapeHtml(s.title)}</strong><p>${escapeHtml(s.goal)}</p></div><b>${s.points}점</b></summary><div class="scenario-body"><div><h4>실행 순서</h4><pre><code data-commands="${index}"></code><button class="scenario-copy" type="button" aria-label="${escapeHtml(s.title)} 명령 복사">명령 복사</button></pre><p class="scenario-verify"><strong>자동 채점 기준</strong>${escapeHtml(s.verify)}</p>${usageHtml(s.usage)}</div><div><h4>막혔을 때 확인</h4><ul>${s.checks.map(c=>`<li>${c}</li>`).join('')}</ul><div class="scenario-resource-links"><a class="scenario-doc" href="https://git-scm.com/docs" target="_blank" rel="noopener noreferrer">Git 공식 명령 문서 ↗</a><a class="scenario-answer" href="${scenarioAnswerUrl(s.id)}" target="_blank" rel="noopener noreferrer">정답 결과 보기 ↗</a></div></div></div></details>`).join('')}</div>
-  <div class="scenario-grade"><div class="scenario-grade-head"><div><span class="eyebrow">SCENARIO GRADER</span><h3>내 Fork 결과 채점</h3><p>Fork가 Public이어야 인증 없이 확인할 수 있습니다. 채점 1회에 GitHub API를 약 45회 사용합니다.</p></div><button id="scenarioGradeButton" class="grade-button">시나리오 채점하기 <span>→</span></button></div><label for="scenarioRepoUrl">내 Fork 저장소 URL</label><input id="scenarioRepoUrl" type="url" placeholder="https://github.com/내사용자이름/git-scenario-lab" autocomplete="url"><div id="scenarioStatus" role="status" aria-live="polite"></div><div id="scenarioResults" hidden><div class="scenario-score"><strong id="scenarioScore">0</strong><span>/ 290점</span><p id="scenarioScoreMessage"></p></div><div id="scenarioResultList" class="result-list"></div></div></div>`;
+  <div class="scenario-grade"><div class="scenario-grade-head"><div><span class="eyebrow">SCENARIO GRADER</span><h3>내 Fork 결과 채점</h3><p>Fork가 Public이어야 인증 없이 확인할 수 있습니다. 채점 1회에 GitHub API를 약 50회 사용합니다.</p></div><button id="scenarioGradeButton" class="grade-button">시나리오 채점하기 <span>→</span></button></div><label for="scenarioRepoUrl">내 Fork 저장소 URL</label><input id="scenarioRepoUrl" type="url" placeholder="https://github.com/내사용자이름/git-scenario-lab" autocomplete="url"><div id="scenarioStatus" role="status" aria-live="polite"></div><div id="scenarioResults" hidden><div class="scenario-score"><strong id="scenarioScore">0</strong><span>/ 290점</span><p id="scenarioScoreMessage"></p></div><div id="scenarioResultList" class="result-list"></div></div></div>`;
   // 명령 블록은 innerHTML이 아니라 textContent로 넣어 <브랜치> 같은 표기가 사라지지 않게 합니다.
   scenarioRoot.querySelectorAll('code[data-commands]').forEach(code => {
     code.textContent = scenarioDefinitions[Number(code.dataset.commands)].commands;
@@ -606,6 +667,15 @@ function comparableLines(patch) {
     return line;
   }).filter(line => /^[-+@]/.test(line) && line.trim() !== '+' && line.trim() !== '-');
 }
+// Pages API는 인증이 필요합니다. 토큰이 없으면 배포 방식 표시를 생략합니다.
+async function pagesBuildType(base) {
+  if (!tokenStore.read()) return null;
+  const info = await api(`${base}/pages`);
+  if (info.missing) return null;
+  if (info.build_type === 'workflow') return 'GitHub Actions';
+  const source = info.source;
+  return source?.branch ? `브랜치 ${source.branch} ${source.path || '/'}` : '브랜치 배포';
+}
 // audit-checklist.md에서 대상 줄을 추가한 커밋을 원본 저장소에서 직접 찾습니다.
 async function blameOrigin() {
   const list = await api(`${UPSTREAM_BASE}/commits?sha=${encodeURIComponent('scenario/blame')}&path=audit-checklist.md&per_page=10`);
@@ -627,9 +697,9 @@ async function gradeScenarios() {
   button.disabled=true; resetApiUsage();
   status.textContent='Fork와 해결 브랜치를 확인하는 중입니다…'; document.getElementById('scenarioResults').hidden=true;
   try {
-    const quota = await checkQuota(45);
+    const quota = await checkQuota(48);
     if (quota && !quota.enough) {
-      status.textContent = `GitHub API 남은 한도가 ${quota.remaining}회뿐입니다(시나리오 채점 1회에 약 45회 필요). 약 ${quota.minutes}분 뒤에 다시 시도하거나 결과 확인 영역의 토큰 칸을 채우세요.`;
+      status.textContent = `GitHub API 남은 한도가 ${quota.remaining}회뿐입니다(시나리오 채점 1회에 약 50회 필요). 약 ${quota.minutes}분 뒤에 다시 시도하거나 결과 확인 영역의 토큰 칸을 채우세요.`;
       return;
     }
     const base=`/repos/${encodeURIComponent(parsed.owner)}/${encodeURIComponent(parsed.name)}`;
@@ -713,13 +783,48 @@ async function gradeScenarios() {
         return missing.length?failed(`blame-answer.md에서 확인하지 못한 항목: ${missing.join(', ')}. 해당 줄을 바꾼 커밋을 blame으로 다시 찾으세요.`)
           :passed(`그 줄을 바꾼 커밋 ${origin.sha.slice(0,7)}(${origin.author})과 일치`); },
       async()=>{ const aFront=await scenarioContent(base,'frontend-task.txt','solution/branch-a'); const aBack=await scenarioContent(base,'backend-task.txt','solution/branch-a'); const bFront=await scenarioContent(base,'frontend-task.txt','solution/branch-b'); const bBack=await scenarioContent(base,'backend-task.txt','solution/branch-b'); const commits=await scenarioCommits(base,'solution/branch-b',10); return aFront?.includes('BRANCH-A-ORIGINAL')&&!aBack&&bFront?.includes('MOVED-AND-AMENDED-2026')&&bBack?.includes('BRANCH-B-BACKEND')&&tipMessage(commits)==='feat: move and refine shared task'&&isLinear(commits)?passed('두 브랜치 작업과 커밋 이동·amend 확인'):failed('branch-a/branch-b 파일 격리와 branch-b 최신 amend 결과를 확인하세요.'); },
-      async()=>{ const workflow=await scenarioContent(base,'.github/workflows/release.yml','solution/actions-release'); const release=await api(`${base}/releases/tags/${encodeURIComponent('release-v1.0.0')}`); const asset=!release.missing&&Array.isArray(release.assets)&&release.assets.find(a=>a.name==='scenario-artifact.txt'&&a.state==='uploaded'); const valid=workflow&&workflow.includes('contents: write')&&workflow.includes('gh release create')&&workflow.includes('release-v'); return valid&&!release.missing&&!release.draft&&asset?passed(`Actions Release와 asset 확인: ${release.html_url}`):failed('workflow, release-v1.0.0 공개 Release, scenario-artifact.txt asset을 모두 확인하세요.'); },
-      async()=>{ const page=await scenarioContent(base,'docs/index.html','solution/pages'); if(!page?.includes('PAGES-LIVE-2026')) return failed('solution/pages의 docs/index.html에 PAGES-LIVE-2026 문구를 넣으세요.');
+      async()=>{
+        // 어느 단계에서 막혔는지 알려 주기 위해 순서대로 확인합니다.
+        const workflow=await scenarioContent(base,'.github/workflows/release.yml','solution/actions-release');
+        if(!workflow) return failed('solution/actions-release 브랜치의 .github/workflows/release.yml을 찾지 못했습니다. 경로와 확장자(.yml)를 확인하세요.');
+        const missingParts=[];
+        if(!workflow.includes('contents: write')) missingParts.push('permissions의 contents: write');
+        if(!workflow.includes('gh release create')) missingParts.push('gh release create 단계');
+        if(!workflow.includes('release-v')) missingParts.push("tags: ['release-v*'] 트리거");
+        if(missingParts.length) return failed(`workflow에 없는 설정: ${missingParts.join(', ')}`);
+        const tagged=await api(`${base}/contents/.github/workflows/release.yml?ref=${encodeURIComponent('release-v1.0.0')}`);
+        if(tagged.missing){
+          const ref=await api(`${base}/git/ref/tags/${encodeURIComponent('release-v1.0.0')}`);
+          return ref.missing
+            ?failed('release-v1.0.0 태그가 원격에 없습니다. git push origin release-v1.0.0 을 따로 실행하세요(git push만으로는 태그가 올라가지 않습니다).')
+            :failed('태그가 workflow 파일이 없는 커밋을 가리킵니다. workflow를 push한 뒤 태그를 다시 만드세요.');
+        }
+        const release=await api(`${base}/releases/tags/${encodeURIComponent('release-v1.0.0')}`);
+        if(release.missing){
+          const runs=await api(`${base}/actions/runs?per_page=20`);
+          const mine=(Array.isArray(runs?.workflow_runs)?runs.workflow_runs:[]).filter(run=>run.name!=='pages build and deployment');
+          if(!mine.length) return failed('태그는 올라갔지만 workflow가 한 번도 실행되지 않았습니다. Fork의 Actions 탭에서 “I understand my workflows, go ahead and enable them”을 눌러 활성화하세요.');
+          const running=mine.find(run=>run.status!=='completed');
+          if(running) return unknown(`workflow가 아직 실행 중입니다(${running.status}). 완료된 뒤 다시 채점하세요.`);
+          const broken=mine.find(run=>run.conclusion&&run.conclusion!=='success');
+          if(broken) return failed(`workflow 실행이 ${broken.conclusion} 상태로 끝났습니다. 로그: ${broken.html_url}`);
+          return failed('workflow는 성공했지만 release-v1.0.0 Release를 찾지 못했습니다. gh release create에 넘긴 태그 이름을 확인하세요.');
+        }
+        if(release.draft) return failed('Release가 draft 상태입니다. 공개 Release로 전환하세요.');
+        const asset=(Array.isArray(release.assets)?release.assets:[]).find(a=>a.name==='scenario-artifact.txt'&&a.state==='uploaded');
+        if(!asset) return failed(`Release는 있지만 scenario-artifact.txt asset이 없습니다(현재 첨부: ${(release.assets||[]).map(a=>a.name).join(', ')||'없음'}). gh release create에 dist/scenario-artifact.txt를 넘겼는지 확인하세요.`);
+        return passed(`Actions Release와 asset 확인: ${release.html_url}`); },
+      async()=>{
+        const page=await scenarioContent(base,'docs/index.html','solution/pages');
+        if(!page?.includes('PAGES-LIVE-2026')) return failed('solution/pages의 docs/index.html에 PAGES-LIVE-2026 문구를 넣으세요.');
         const url=`https://${parsed.owner.toLowerCase()}.github.io/${parsed.name}/`;
         let live='';
-        try { const response=await fetch(url); if(!response.ok) return failed(`Pages 주소가 아직 열리지 않았습니다(HTTP ${response.status}). Settings → Pages에서 solution/pages와 /docs를 확인하세요.`); live=await response.text(); }
+        try { const response=await fetch(url); if(!response.ok) return failed(`Pages 주소가 아직 열리지 않았습니다(HTTP ${response.status}). 경로 A는 Settings → Pages의 Branch가 solution/pages·폴더가 /docs인지, 경로 B는 Source가 GitHub Actions이고 배포 workflow가 성공했는지 확인하세요.`); live=await response.text(); }
         catch { return unknown('Pages 주소에 연결하지 못했습니다. 배포 완료 후 다시 시도하세요.'); }
-        return live.includes('PAGES-LIVE-2026')?passed(`Pages 실제 서비스 확인: ${url}`):failed('Pages는 열렸지만 표시 문구가 없습니다. 배포된 브랜치와 폴더를 확인하세요.'); },
+        if(!live.includes('PAGES-LIVE-2026')) return failed('Pages는 열렸지만 표시 문구가 없습니다. 경로 A는 배포 브랜치와 폴더를, 경로 B는 upload-pages-artifact의 path를 확인하세요.');
+        // 브랜치 배포와 Actions 배포 모두 인정하며, 방식은 참고로만 표시합니다.
+        const how=await pagesBuildType(base);
+        return passed(`Pages 실제 서비스 확인: ${url}${how?` · 배포 방식: ${how}`:''}`); },
       async()=>{ const ref=await api(`${base}/git/ref/tags/${encodeURIComponent('solution-v1.0.0')}`); return ref.missing?failed('원격에서 solution-v1.0.0 태그를 찾지 못했습니다.'):passed('원격 태그 solution-v1.0.0 확인'); }
     ];
     if(runnable){ for(let i=0;i<tasks.length;i++) checks[i+1]=await assess(tasks[i]); }

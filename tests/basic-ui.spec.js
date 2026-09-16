@@ -86,3 +86,27 @@ test('모바일 화면에서 메뉴와 가이드가 동작하고 가로 넘침�
   expect(errors).toEqual([]);
   await page.screenshot({ path: 'test-results/mobile-scenarios.png' });
 });
+
+test('Pages 시나리오가 브랜치·Actions 두 배포 경로를 안내한다', async ({ page }) => {
+  await page.goto('/#scenarios');
+  const card = page.locator('#scenario-pages');
+  await card.locator('summary').first().click();
+  const commands = await card.locator('pre code').textContent();
+  expect(commands).toContain('Deploy from a branch');
+  expect(commands).toContain('actions/upload-pages-artifact@v3');
+  expect(commands).toContain('actions/deploy-pages@v4');
+  expect(commands).toContain('${{ steps.deployment.outputs.page_url }}');
+  await card.locator('details.usage summary').click();
+  await expect(card.locator('details.usage')).toContainText('한 저장소에 사이트는 하나');
+});
+
+test('Release 시나리오가 Actions 활성화와 재시도 절차를 안내한다', async ({ page }) => {
+  await page.goto('/#scenarios');
+  const card = page.locator('#scenario-release');
+  await card.locator('summary').first().click();
+  await card.locator('details.usage summary').click();
+  const usage = card.locator('details.usage');
+  await expect(usage).toContainText('Fork는 Actions가 꺼져 있음');
+  await expect(usage).toContainText('git push는 태그를 올리지 않음');
+  await expect(usage).toContainText('gh release delete');
+});

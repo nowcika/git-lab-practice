@@ -189,6 +189,42 @@ test('blame 답안은 그 줄을 실제로 바꾼 커밋이어야 한다', async
   assert.match(item(r, 'blame').detail, /바꾼 커밋이 아닙니다/);
 });
 
+test('release 태그는 workflow를 포함한 커밋을 가리켜야 한다', async t => {
+  const f = fixture(t);
+  const earlier = f.git('rev-parse', 'HEAD');
+  f.write('.github/workflows/release.yml', 'permissions:\n  contents: write\non:\n  push:\n    tags:\n      - release-v*\njobs:\n  release:\n    steps:\n      - run: gh release create "$GITHUB_REF_NAME"\n');
+  f.commit('ci: automate GitHub release'); f.git('branch', 'solution/actions-release');
+  // 태그가 없으면 실패합니다.
+  let r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'release').state, 'fail');
+  assert.match(item(r, 'release').detail, /태그가 없습니다/);
+  // workflow 이전 커밋에 태그를 달면 실패합니다.
+  f.git('-c', 'tag.gpgsign=false', 'tag', '-a', 'release-v1.0.0', '-m', 'wrong target', earlier);
+  r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'release').state, 'fail');
+  assert.match(item(r, 'release').detail, /workflow 파일이 없는 커밋/);
+  // 올바른 커밋에 태그를 달면 로컬 조건을 통과하고 온라인 확인 단계로 넘어갑니다.
+  f.git('tag', '-d', 'release-v1.0.0');
+  f.git('-c', 'tag.gpgsign=false', 'tag', '-a', 'release-v1.0.0', '-m', 'ok', 'solution/actions-release');
+  r = await grade({ ...f.options, course: 'scenarios', offline: true });
+  assert.equal(item(r, 'release').state, 'unknown');
+});
+
+test('Pages는 브랜치 배포와 Actions 배포를 모두 인정한다', async t => {
+  const f = fixture(t);
+  f.write('docs/index.html', '<h1>PAGES-LIVE-2026</h1>'); f.commit('feat: publish homepage'); f.git('branch', 'solution/pages');
+  const live = { status: 200, ok: true, text: async () => 'PAGES-LIVE-2026' };
+  let r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github, fetch: async () => live });
+  assert.equal(item(r, 'pages').state, 'pass');
+  assert.equal(item(r, 'pages').evidence.deployment, 'branch');
+  // Actions 배포 workflow를 추가해도 동일하게 통과합니다.
+  f.write('.github/workflows/pages.yml', 'jobs:\n  deploy:\n    steps:\n      - uses: actions/deploy-pages@v4\n');
+  f.commit('ci: deploy pages with actions'); f.git('branch', '-f', 'solution/pages');
+  r = await grade({ ...f.options, course: 'scenarios' }, { github: f.github, fetch: async () => live });
+  assert.equal(item(r, 'pages').state, 'pass');
+  assert.equal(item(r, 'pages').evidence.deployment, 'actions');
+});
+
 test('CLI JSON, 종료 코드, 기존 파일 덮어쓰기 방지', t => {
   const f = fixture(t); const output = path.join(f.dir, 'result.json'); const cli = path.resolve(__dirname, '../bin/grade-local.js');
   const args = [cli, '--repo', f.dir, '--username', 'student', '--offline', '--json', output];

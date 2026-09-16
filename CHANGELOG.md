@@ -130,3 +130,59 @@ Git 명령을 전혀 쓰지 않고 화면의 정답 문구만 파일로 만든 �
 - 로컬 검증기 단위 테스트 22개 통과 (diff·show·blame 위조 차단 테스트 3개 추가)
 - Playwright 19개 통과, 공식 정답 저장소 290점 유지
 - 공식 정답 저장소를 clone해 `git fetch upstream` 후 오프라인 채점: diff·show·blame·upstream 모두 pass
+
+
+## 2026-09-16 (3차) — Actions Release 진단 강화, Pages 배포 경로 2종 지원
+
+### 15. Actions Release — 실패 지점을 정확히 알려 줍니다
+
+이전에는 실패 시 "workflow, release-v1.0.0 공개 Release, scenario-artifact.txt asset을
+모두 확인하세요" 한 줄만 나와 어디서 막혔는지 알 수 없었습니다. 이제 순서대로 확인하고
+막힌 단계만 보고합니다.
+
+1. workflow 파일이 `solution/actions-release`에 있는가 → 없으면 경로·확장자 안내
+2. `contents: write`, `gh release create`, `release-v` 트리거가 있는가 → 빠진 항목만 나열
+3. `release-v1.0.0` 태그가 원격에 있는가 → 없으면 "git push origin release-v1.0.0을 따로 실행"
+4. 그 태그가 workflow를 포함한 커밋을 가리키는가 → 아니면 "태그를 다시 만드세요"
+5. Release가 없으면 `/actions/runs`를 조회해 원인을 구분
+   - 실행 기록이 아예 없음 → **Fork의 Actions 활성화 버튼**을 누르라고 안내
+   - 실행 중 → `unknown`(판정 보류)
+   - 실패로 끝남 → conclusion과 **실행 로그 URL**을 그대로 표시
+   - 성공했는데 Release 없음 → 태그 이름 확인 안내
+6. draft 상태 / asset 누락 → 각각 구분하고, 실제 첨부된 파일 이름을 보여 줌
+
+로컬 검증기도 태그가 workflow를 포함한 커밋을 가리키는지 오프라인에서 확인합니다.
+
+활용 사례에 **자주 막히는 지점**(Fork의 Actions 비활성, 순서 의존, `git push`는 태그를
+올리지 않음, 파일 경로, YAML 탭 금지)과 **실패 후 다시 시도하기**(`gh release delete`,
+원격/로컬 태그 삭제, 재태그, `gh run rerun`) 블록을 추가했습니다.
+
+### 16. Pages — 브랜치 배포와 Actions 배포 모두 인정
+
+한 저장소에 Pages 사이트는 하나뿐이고 배포 방식도 하나만 고를 수 있으므로,
+별도 시나리오를 만들지 않고 16번 안에서 **경로 A / 경로 B 중 택1**로 구성했습니다.
+
+- **경로 A**: Settings → Pages → Deploy from a branch (`solution/pages`, `/docs`) — 기존 방식
+- **경로 B**: `.github/workflows/pages.yml` + Source를 GitHub Actions로 전환
+  (`actions/configure-pages@v5` → `actions/upload-pages-artifact@v3` → `actions/deploy-pages@v4`)
+
+채점은 어느 쪽이든 동일하게 **docs/index.html의 문구 + 실제 사이트 응답**으로 판정합니다.
+토큰을 입력한 경우에만 `/repos/{owner}/{repo}/pages`를 조회해 실제 배포 방식을 결과에
+덧붙입니다(공개 API로는 이 엔드포인트를 조회할 수 없어 선택 사항입니다).
+실패 안내도 경로별로 나눠 표시합니다.
+
+활용 사례에 Actions 배포의 구성 요소(필요 권한, 각 액션의 역할, `environment: github-pages`,
+`workflow_dispatch`)와 "한 저장소에 사이트는 하나" 주의사항을 추가했습니다.
+
+정답 저장소는 경로 A를 그대로 사용하므로 변경하지 않았습니다.
+
+### API 호출 수
+
+시나리오 채점 1회 약 44회 → 정상 통과 시 약 46회, 실패 진단이 붙으면 최대 50회.
+화면 안내는 "약 50회", 사전 한도 확인값은 48로 조정했습니다.
+
+### 검증
+
+- 로컬 검증기 단위 테스트 24개 통과 (release 태그 검사, Pages 두 경로 테스트 추가)
+- Playwright 21개 통과 (Pages 두 경로 안내, Release 문제 해결 안내 테스트 추가)
+- 공식 정답 저장소 290점 유지
